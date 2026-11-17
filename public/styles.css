@@ -1,0 +1,112 @@
+:root {
+  --bg-page: #f4f7fb;
+  --bg-card: #ffffff;
+  --primary: #0b6ef3;
+  --primary-dark: #0853b8;
+  --teal: #0d9488;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --border-color: #e2e8f0;
+  --danger-bg: #fef2f2;
+  --danger-text: #b91c1c;
+  --advice-bg: #eff6ff;
+  --shadow-lg: 0 16px 36px rgba(15, 23, 42, 0.16);
+  --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, sans-serif; background-color: var(--bg-page); color: var(--text-main); line-height: 1.55; padding-bottom: 100px; }
+.container { width: min(1180px, 92%); margin: 0 auto; }
+.hidden { display: none !important; }
+
+/* Header & Modal & Cards */
+.site-header { background: var(--bg-card); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 40; }
+.header-inner { display: flex; justify-content: space-between; align-items: center; padding: 0.9rem 0; flex-wrap: wrap; gap: 0.75rem; }
+.logo-group { display: flex; align-items: center; gap: 0.65rem; }
+.logo-cross { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: var(--primary); color: #fff; font-weight: 800; border-radius: 8px; }
+.logo-title { font-weight: 700; font-size: 1.15rem; }
+.header-meta { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.gps-pill { display: inline-flex; align-items: center; gap: 0.5rem; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 0.4rem 0.8rem; border-radius: 999px; font-size: 0.82rem; font-weight: 600; }
+.pulse-dot { width: 8px; height: 8px; background: #16a34a; border-radius: 50%; }
+.user-chip { font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.6rem; }
+.btn-link { background: none; border: none; color: var(--primary); cursor: pointer; font-weight: 600; }
+
+.search-hero { background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius); padding: 2rem; margin: 1.5rem 0; text-align: center; box-shadow: var(--shadow-lg); }
+.search-bar-wrapper { display: flex; max-width: 760px; margin: 1rem auto; gap: 0.6rem; }
+.search-input { flex: 1; padding: 0.9rem 1.1rem; border: 2px solid #cbd5e1; border-radius: 10px; font-size: 1rem; outline: none; }
+.search-input:focus { border-color: var(--primary); }
+.btn { padding: 0.75rem 1.25rem; border-radius: 10px; font-weight: 600; font-size: 0.95rem; border: none; cursor: pointer; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-success { background: var(--teal); color: #fff; }
+.btn-google { width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.65rem; background: #fff; border: 1px solid #cbd5e1; color: var(--text-main); margin-bottom: 1rem; }
+
+.med-detail-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem; margin-top: 1rem; box-shadow: var(--shadow-lg); }
+.med-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
+.med-category-tag { background: #e0f2fe; color: #0369a1; font-size: 0.76rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 6px; }
+.price-box { background: #f8fafc; border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 1rem; min-width: 260px; }
+.mrp-amount { font-size: 1.25rem; font-weight: 800; }
+.pharmacy-row { display: flex; justify-content: space-between; padding: 0.2rem 0; font-size: 0.85rem;}
+.pharmacy-price { font-weight: 700; color: #15803d; }
+.med-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+.info-panel { background: #f8fafc; border: 1px solid var(--border-color); border-radius: 10px; padding: 1rem; font-size: 0.88rem;}
+.side-effects-panel { background: var(--danger-bg); border-color: #fecaca; }
+.doctor-advice-banner { margin-top: 1rem; background: var(--advice-bg); border-left: 4px solid var(--primary); padding: 0.9rem; border-radius: 8px; font-size: 0.9rem; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.72); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+.modal-card { background: var(--bg-card); width: min(440px, 100%); border-radius: 16px; padding: 2rem; box-shadow: var(--shadow-lg); text-align: center; }
+.phone-input-group { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+.phone-input-group input { flex: 1; padding: 0.7rem; border: 1px solid #cbd5e1; border-radius: 8px; }
+.status-msg { font-size: 0.82rem; color: var(--primary); margin-top: 0.5rem; }
+
+/* 1. THE PERFECT CIRCULAR CHAT BOT BUTTON */
+.chat-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 65px;
+  height: 65px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(11, 110, 243, 0.4);
+  cursor: pointer;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.chat-fab:hover {
+  transform: scale(1.1);
+  background: var(--primary-dark);
+}
+
+/* 2. THE STRICT SQUARE CHAT WINDOW */
+.chat-window {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 350px;
+  height: 450px;
+  background: var(--bg-card);
+  border-radius: 0; /* Ensures it is a strict square/rectangle, NOT rounded */
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.chatbot-header { background: linear-gradient(90deg, #0b6ef3, #0d9488); color: #fff; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; }
+.chatbot-title-group { display: flex; align-items: center; gap: 0.6rem; }
+.ai-status-dot { width: 10px; height: 10px; background: #4ade80; border-radius: 50%; }
+.close-btn { background: transparent; color: white; border: none; font-size: 1.2rem; cursor: pointer; }
+
+.chat-messages { flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.8rem; background: #f8fafc; }
+.chat-bubble { padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.9rem; max-width: 90%; word-wrap: break-word; line-height: 1.4; }
+.bot-bubble { background: #ffffff; border: 1px solid var(--border-color); align-self: flex-start; }
+.user-bubble { background: var(--primary); color: #ffffff; align-self: flex-end; }
+
+.chat-input-bar { display: flex; border-top: 1px solid var(--border-color); padding: 0.6rem; gap: 0.5rem; background: #fff; }
+.chat-input-bar input { flex: 1; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.6rem; outline: none; }
