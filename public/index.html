@@ -24,19 +24,26 @@
       <form id="phone-auth-form">
         <label for="phone-input" class="input-label">Mobile Number (with +91)</label>
         <div class="phone-input-group">
-          <input type="tel" id="phone-input" placeholder="+91 98765 43210" required />
+          <input type="tel" id="phone-input" placeholder="+91 98765 43210" autocomplete="tel" required />
           <button type="submit" id="send-otp-btn" class="btn btn-primary">Send OTP</button>
         </div>
       </form>
+
       <div id="recaptcha-container"></div>
+
       <form id="otp-verify-form" class="hidden">
         <label for="otp-input" class="input-label">Enter 6-Digit OTP</label>
         <div class="phone-input-group">
-          <input type="text" id="otp-input" placeholder="123456" maxlength="6" required />
-          <button type="submit" class="btn btn-success">Verify</button>
+          <input type="text" id="otp-input" inputmode="numeric" pattern="[0-9]{6}" placeholder="123456" maxlength="6" required />
+          <button type="submit" id="verify-otp-btn" class="btn btn-success">Verify</button>
+        </div>
+        <div class="otp-actions-row">
+          <button type="button" id="resend-otp-btn" class="btn-link">Resend OTP</button>
+          <button type="button" id="change-phone-btn" class="btn-link">Change Number</button>
         </div>
       </form>
-      <p id="auth-status-msg" class="status-msg"></p>
+
+      <p id="auth-status-msg" class="status-msg" role="status" aria-live="polite"></p>
     </div>
   </div>
 
@@ -45,7 +52,10 @@
     <div class="container header-inner">
       <div class="logo-group">
         <span class="logo-cross">+</span>
-        <div><span class="logo-title">MediPulse India</span></div>
+        <div>
+          <span class="logo-title">MediPulse India</span>
+          <span class="logo-tag">Verified Clinical &amp; Pharmacy Directory</span>
+        </div>
       </div>
       <div class="header-meta">
         <div id="gps-badge" class="gps-pill">
@@ -60,14 +70,30 @@
     </div>
   </header>
 
-  <!-- MAIN SEARCH -->
+  <!-- MAIN CONTENT -->
   <main class="container main-content">
     <section class="search-hero">
       <h2>Search Any Medicine or Supplement</h2>
       <p class="hero-sub">Powered by live Groq AI fetching real-time clinical data.</p>
       <div class="search-bar-wrapper">
-        <input type="search" id="medicine-search-input" class="search-input" placeholder="Search Biotin, Aspirin, Dolo..." autocomplete="off" />
+        <input type="search" id="medicine-search-input" class="search-input" placeholder="Search Biotin, Paracetamol, Cetirizine, ORS..." autocomplete="off" />
         <button id="search-btn" class="btn btn-primary search-btn" type="button">Search AI</button>
+      </div>
+
+      <!-- DYNAMIC MEDICINE RECOMMENDATIONS SECTION BELOW SEARCH BAR -->
+      <div class="recommendations-wrapper" aria-label="Dynamic Medicine Recommendations">
+        <div class="rec-header-bar">
+          <span class="quick-overview-header">Essential Medicine Reference Overview (Rotates on Refresh)</span>
+          <button id="refresh-rec-btn" class="btn-link rec-refresh-btn" type="button">Rotate List ↻</button>
+        </div>
+
+        <div id="basic-descriptions-strip" class="basic-strip">
+          <!-- Populated dynamically via /api/recommendations -->
+        </div>
+
+        <div id="rec-disclaimer-banner" class="rec-disclaimer">
+          <strong>Medical Safety Disclaimer:</strong> Reference information is for educational awareness only and is not a substitute for professional medical advice. Do not self-medicate. Prescription-only (Schedule H) medicines require supervision by a registered medical practitioner.
+        </div>
       </div>
     </section>
 
@@ -88,13 +114,13 @@
         <span class="ai-status-dot"></span>
         <strong>MediBot AI</strong>
       </div>
-      <button id="close-chat-btn" class="close-btn" type="button">✖</button>
+      <button id="close-chat-btn" class="close-btn" type="button" aria-label="Close Chat">✖</button>
     </div>
     <div id="chat-messages" class="chat-messages">
       <div class="chat-bubble bot-bubble">Hello! I can answer general everyday questions or provide structured medical info. How can I help you?</div>
     </div>
     <form id="chat-form" class="chat-input-bar">
-      <input type="text" id="chat-input" placeholder="Type your message..." required />
+      <input type="text" id="chat-input" placeholder="Type your message..." autocomplete="off" required />
       <button type="submit" class="btn btn-primary chat-send-btn">Send</button>
     </form>
   </div>
