@@ -70,7 +70,7 @@ function setAuthMessage(text, isError = false) {
 }
 
 // ============================================================================
-// FIREBASE AUTHENTICATION (GOOGLE + PHONE OTP WITH RECAPTCHA RESET)
+// FIREBASE AUTHENTICATION (GOOGLE + PHONE OTP WITH STRICT +91 VALIDATION)
 // ============================================================================
 function setupRecaptchaVerifier() {
   if (!firebaseAuth) return null;
@@ -95,22 +95,45 @@ function setupRecaptchaVerifier() {
   }
 }
 
-function normalizePhoneNumber(rawInput) {
+function validateAndNormalizePhone(rawInput) {
   const cleaned = rawInput.replace(/[\s\-()]/g, '');
-  if (/^\+[1-9]\d{7,14}$/.test(cleaned)) {
-    return cleaned;
+
+  // Specific validation for Indian (+91) numbers to catch 9-digit typos like +91 933938899
+  if (cleaned.startsWith('+91')) {
+    const localDigits = cleaned.slice(3).replace(/\D/g, '');
+    if (localDigits.length !== 10) {
+      return {
+        valid: false,
+        error: `Indian mobile numbers (+91) must contain exactly 10 digits after +91 (you entered ${localDigits.length}).`
+      };
+    }
+    if (!/^[6-9]\d{9}$/.test(localDigits)) {
+      return {
+        valid: false,
+        error: 'Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.'
+      };
+    }
+    return { valid: true, formatted: `+91${localDigits}` };
   }
+
+  // Other valid international E.164 numbers (10–15 digits)
+  if (/^\+[1-9]\d{9,14}$/.test(cleaned)) {
+    return { valid: true, formatted: cleaned };
+  }
+
+  // 10-digit local Indian number entered without +91
   const digitsOnly = cleaned.replace(/\D/g, '');
   if (digitsOnly.length === 10 && /^[6-9]\d{9}$/.test(digitsOnly)) {
-    return `+91${digitsOnly}`;
+    return { valid: true, formatted: `+91${digitsOnly}` };
   }
-  if (digitsOnly.length === 12 && digitsOnly.startsWith('91')) {
-    return `+${digitsOnly}`;
+  if (digitsOnly.length === 12 && digitsOnly.startsWith('91') && /^[6-9]\d{9}$/.test(digitsOnly.slice(2))) {
+    return { valid: true, formatted: `+${digitsOnly}` };
   }
-  if (digitsOnly.length === 11 && digitsOnly.startsWith('0')) {
-    return `+91${digitsOnly.slice(1)}`;
-  }
-  return null;
+
+  return {
+    valid: false,
+    error: 'Enter a valid 10-digit mobile number (e.g., +91 98765 43210).'
+  };
 }
 
 function mapFirebaseError(error) {
@@ -132,6 +155,9 @@ function mapFirebaseError(error) {
   }
   if (code === 'auth/billing-not-enabled') {
     return 'Live carrier SMS requires Firebase Blaze billing or a test number configured in Firebase Console → Phone numbers for testing.';
+  }
+  if (code === 'auth/unauthorized-domain') {
+    return 'This website domain is not listed under Firebase Console → Authentication → Settings → Authorized domains.';
   }
   return error?.message || 'Authentication failed. Please try again.';
 }
@@ -185,7 +211,7 @@ async function triggerPhoneOtp(phoneNumber) {
     startResendCooldown(30);
     setAuthMessage(`OTP sent to ${phoneNumber}. Enter the 6-digit code below.`);
   } catch (error) {
-    setupRecaptchaVerifier(); // Reset reCAPTCHA so user can retry cleanly
+    setupRecaptchaVerifier();
     setAuthMessage(mapFirebaseError(error), true);
   } finally {
     sendOtpBtn.disabled = false;
@@ -211,13 +237,13 @@ function startResendCooldown(seconds) {
 
 phoneAuthForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const formatted = normalizePhoneNumber(phoneInput.value.trim());
-  if (!formatted) {
-    setAuthMessage('Please enter a valid 10-digit Indian mobile number (e.g., +91 98765 43210).', true);
+  const check = validateAndNormalizePhone(phoneInput.value.trim());
+  if (!check.valid) {
+    setAuthMessage(check.error, true);
     return;
   }
-  phoneInput.value = formatted;
-  await triggerPhoneOtp(formatted);
+  phoneInput.value = check.formatted;
+  await triggerPhoneOtp(check.formatted);
 });
 
 resendOtpBtn.addEventListener('click', async () => {
@@ -230,7 +256,7 @@ changePhoneBtn.addEventListener('click', () => {
   otpVerifyForm.classList.add('hidden');
   confirmationResult = null;
   phoneInput.focus();
-  setAuthMessage('Enter your mobile number and click Send OTP.');
+  setAuthMessage('Enter your 10-digit mobile number and click Send OTP.');
 });
 
 otpVerifyForm.addEventListener('submit', async (e) => {
@@ -331,7 +357,6 @@ async function loadRecommendations() {
       return;
     }
 
-    // Store shown IDs so the next browser refresh rotates to different medicines
     sessionStorage.setItem(REC_STORAGE_KEY, list.map(m => m.id).join(','));
 
     basicStrip.innerHTML = list.map((med) => {
@@ -381,21 +406,28 @@ if (refreshRecBtn) {
 }
 
 // ============================================================================
-// GROQ API SEARCH ENGINE
+// GROQ API SEARCH ENGINE & IMMEDIATE RESULTS UI
 // ============================================================================
+function clearSearchResults() {
+  lastRenderedMedicines = [];
+  resultsContainer.innerHTML = '';
+  searchInput.value = '';
+  searchInput.focus();
+}
+
 async function searchAI(query) {
   const cleanQuery = (query || '').trim();
   if (!cleanQuery) {
     resultsContainer.innerHTML = `
       <div class="med-detail-card">
-        <h3>Please enter a medicine or supplement name</h3>
-        <p>Type a valid medicine name (for example: Paracetamol, Biotin, Cetirizine, or ORS) and click Search AI.</p>
+        <h3>Please enter a medicine or medical term</h3>
+        <p>Type a medicine name or clinical topic (e.g., Paracetamol, Biotin, Cetirizine, ORS, Migraine) and click Search AI.</p>
       </div>`;
     return;
   }
 
   searchBtn.disabled = true;
-  resultsContainer.innerHTML = `<div class="med-detail-card"><h3>Searching clinical reference database &amp; Groq AI for "${escapeHtml(cleanQuery)}"...</h3></div>`;
+  resultsContainer.innerHTML = `<div class="med-detail-card"><h3>Searching live AI clinical reference for "${escapeHtml(cleanQuery)}"...</h3></div>`;
 
   try {
     const resp = await fetch(`/api/medicines?q=${encodeURIComponent(cleanQuery)}`);
@@ -404,41 +436,60 @@ async function searchAI(query) {
     if (!resp.ok) {
       resultsContainer.innerHTML = `
         <div class="med-detail-card">
-          <h3>Search Notice</h3>
+          <div class="rec-card-header">
+            <h3>Search Notice</h3>
+            <button type="button" id="clear-results-btn" class="btn-link">Clear ✕</button>
+          </div>
           <p>${escapeHtml(data.error || 'Unable to process this search right now.')}</p>
         </div>`;
+      document.getElementById('clear-results-btn')?.addEventListener('click', clearSearchResults);
       return;
     }
 
     const medicines = Array.isArray(data.medicines) ? data.medicines : [];
     lastRenderedMedicines = medicines;
-    renderMedicineDetails(medicines, data.message || data.notice);
+    renderMedicineDetails(medicines, data.message || data.notice, cleanQuery);
   } catch (error) {
     resultsContainer.innerHTML = `
       <div class="med-detail-card">
-        <h3>Network Connection Error</h3>
-        <p>Could not reach the clinical search server. Please check your connection and try again.</p>
+        <div class="rec-card-header">
+          <h3>Network Connection Error</h3>
+          <button type="button" id="clear-results-btn" class="btn-link">Clear ✕</button>
+        </div>
+        <p>Could not reach the clinical search server. Please check your internet connection and try again.</p>
       </div>`;
+    document.getElementById('clear-results-btn')?.addEventListener('click', clearSearchResults);
   } finally {
     searchBtn.disabled = false;
   }
 }
 
-function renderMedicineDetails(medicines, optionalNotice = '') {
+function renderMedicineDetails(medicines, optionalNotice = '', searchedQuery = '') {
   if (!medicines || medicines.length === 0) {
     resultsContainer.innerHTML = `
       <div class="med-detail-card">
-        <h3>No matching clinical results found</h3>
-        <p>${escapeHtml(optionalNotice || 'Please verify the spelling of the medicine or supplement name and try again.')}</p>
+        <div class="rec-card-header">
+          <h3>No matching clinical results found</h3>
+          <button type="button" id="clear-results-btn" class="btn-link">Clear ✕</button>
+        </div>
+        <p>${escapeHtml(optionalNotice || 'Please verify the spelling of the medicine, supplement, or medical term and try again.')}</p>
       </div>`;
+    document.getElementById('clear-results-btn')?.addEventListener('click', clearSearchResults);
     return;
   }
 
+  const toolbarHtml = `
+    <div class="results-toolbar">
+      <span>Showing clinical result${searchedQuery ? ` for "${escapeHtml(searchedQuery)}"` : ''}</span>
+      <button type="button" id="clear-results-btn" class="btn-link">Clear Result ✕</button>
+    </div>
+  `;
+
   const noticeBanner = optionalNotice
-    ? `<div class="rec-disclaimer" style="margin-bottom: 1rem;">${escapeHtml(optionalNotice)}</div>`
+    ? `<div class="rec-disclaimer">${escapeHtml(optionalNotice)}</div>`
     : '';
 
-  resultsContainer.innerHTML = noticeBanner + medicines.map((med) => {
+  resultsContainer.innerHTML = toolbarHtml + noticeBanner + medicines.map((med) => {
     const basePrice = Number(med.basePriceINR) || 95.00;
     const pharmacies = Array.isArray(currentLocalityData.nearbyPharmacies)
       ? currentLocalityData.nearbyPharmacies
@@ -479,6 +530,8 @@ function renderMedicineDetails(medicines, optionalNotice = '') {
       </article>
     `;
   }).join('');
+
+  document.getElementById('clear-results-btn')?.addEventListener('click', clearSearchResults);
 }
 
 searchBtn.addEventListener('click', () => searchAI(searchInput.value));
@@ -486,6 +539,11 @@ searchInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
     searchAI(searchInput.value);
+  }
+});
+searchInput.addEventListener('search', () => {
+  if (!searchInput.value.trim()) {
+    clearSearchResults();
   }
 });
 

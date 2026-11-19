@@ -216,7 +216,6 @@ let cachedModelListTimestamp = 0;
 const MODEL_CACHE_TTL_MS = 30 * 60 * 1000;
 const blacklistedModels = new Set();
 
-// Verified English & Hinglish capable text-generation LLMs
 const PREFERRED_TEXT_MODELS = [
   'llama-3.3-70b-versatile',
   'llama-3.1-8b-instant',
@@ -226,14 +225,13 @@ const PREFERRED_TEXT_MODELS = [
   'mixtral-8x7b-32768'
 ];
 
-// Excludes audio/TTS/STT, safety classifiers, AND regional Arabic models (allam, saba, orpheus, etc.)
+// Excludes audio/TTS/STT, safety classifiers, reasoning-heavy models, and Arabic-default models
 const NON_TEXT_CHAT_MODEL_REGEX = /orpheus|canopylabs|tts|whisper|audio|speech|playai|guard|safeguard|embed|rerank|tool-use|distil-whisper|allam|saba|arabic/i;
-
-// Regex to detect unwanted Arabic or CJK scripts in model output
 const UNWANTED_FOREIGN_SCRIPT_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u4E00-\u9FFF]/;
 
 function getConfiguredApiKey() {
-  return (process.env.GROK_API_KEY || process.env.GROQ_API_KEY || '').trim();
+  const raw = process.env.GROK_API_KEY || process.env.GROQ_API_KEY || '';
+  return raw.replace(/^["']|["']$/g, '').trim();
 }
 
 function getApiBaseUrl(apiKey) {
@@ -277,6 +275,9 @@ async function getCandidateTextModels(apiKey, baseUrl) {
         const others = validIds.filter(id => !prioritized.includes(id));
         cachedModelList = [...prioritized, ...others];
         cachedModelListTimestamp = now;
+      } else {
+        const errBody = await resp.json().catch(() => ({}));
+        console.error('[AI Models List Error]:', resp.status, errBody.error?.message || '');
       }
     } catch (err) {
       console.warn('[AI Model Discovery Warning]: Using static preferred model list:', err.message);
@@ -292,12 +293,91 @@ async function getCandidateTextModels(apiKey, baseUrl) {
 }
 
 // ============================================================================
-// RESILIENT AI COMPLETION CLIENT (WITH FOREIGN SCRIPT BLOCKING & FAILOVER)
+// JSON PARSER WITH TRUNCATION AUTO-REPAIR
 // ============================================================================
-async function callGroqAI({ messages, maxTokens = 800, temperature = 0.2 }) {
+function extractAndRepairJson(rawText) {
+  if (!rawText || typeof rawText !== 'string') {
+    throw new Error('Empty AI response');
+  }
+
+  // Strip <think>...</think> reasoning tags and markdown code fences
+  let cleaned = rawText
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/```json/gi, '')
+    .replace(/```/g, '')
+    .trim();
+
+  const firstBrace = cleaned.indexOf('{');
+  if (firstBrace === -1) {
+    throw new Error('No JSON object found in AI response');
+  }
+
+  cleaned = cleaned.slice(firstBrace);
+
+  // 1. Direct parse attempt
+  try {
+    return JSON.parse(cleaned);
+  } catch (_) {
+    // 2. Trim trailing characters after the last closing brace if extra text exists
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (lastBrace > 0) {
+      try {
+        return JSON.parse(cleaned.slice(0, lastBrace + 1));
+      } catch (__) {
+        // Proceed to truncation repair
+      }
+    }
+  }
+
+  // 3. Repair JSON truncated due to max_tokens ceiling
+  let repaired = cleaned.replace(/,\s*$/, '');
+  let inString = false;
+  let escapeNext = false;
+  const stack = [];
+
+  for (let i = 0; i < repaired.length; i++) {
+    const ch = repaired[i];
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+    if (ch === '\\') {
+      escapeNext = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (ch === '{') stack.push('}');
+      else if (ch === '[') stack.push(']');
+      else if (ch === '}' || ch === ']') {
+        if (stack.length > 0 && stack[stack.length - 1] === ch) {
+          stack.pop();
+        }
+      }
+    }
+  }
+
+  if (inString) {
+    repaired += '"';
+  }
+  repaired = repaired.replace(/,\s*$/, '');
+  while (stack.length > 0) {
+    repaired += stack.pop();
+  }
+
+  return JSON.parse(repaired);
+}
+
+// ============================================================================
+// RESILIENT AI COMPLETION CLIENT (WITH JSON VALIDATION & MODEL FAILOVER)
+// ============================================================================
+async function callGroqAI({ messages, maxTokens = 500, temperature = 0.2, expectJson = false }) {
   const apiKey = getConfiguredApiKey();
   if (!apiKey || apiKey === 'DEMO' || apiKey.includes('paste_your')) {
-    const err = new Error('AI API key is not configured on the server.');
+    const err = new Error('GROK_API_KEY is missing or invalid in environment variables.');
     err.code = 'MISSING_API_KEY';
     throw err;
   }
@@ -306,7 +386,7 @@ async function callGroqAI({ messages, maxTokens = 800, temperature = 0.2 }) {
   const candidates = await getCandidateTextModels(apiKey, baseUrl);
   let lastError = null;
 
-  for (let i = 0; i < Math.min(candidates.length, 4); i++) {
+  for (let i = 0; i < Math.min(candidates.length, 5); i++) {
     const model = candidates[i];
     let currentMaxTokens = maxTokens;
 
@@ -331,24 +411,46 @@ async function callGroqAI({ messages, maxTokens = 800, temperature = 0.2 }) {
         if (response.ok) {
           const content = data.choices?.[0]?.message?.content;
           if (content) {
-            // Guard: If the model unexpectedly responds in Arabic or CJK script, blacklist it & failover
             if (UNWANTED_FOREIGN_SCRIPT_REGEX.test(content)) {
-              console.warn(`[Language Guard]: Model "${model}" output non-English/Hinglish script. Failing over.`);
+              console.warn(`[Language Guard]: Model "${model}" output non-English script. Failing over.`);
               blacklistedModels.add(model);
-              lastError = new Error(`Model ${model} returned unsupported foreign script.`);
+              lastError = new Error(`Model ${model} returned unsupported script.`);
               break;
             }
-            return { content, model };
+
+            const cleanContent = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+            if (expectJson) {
+              try {
+                const parsedJson = extractAndRepairJson(cleanContent);
+                return { content: cleanContent, json: parsedJson, model };
+              } catch (parseErr) {
+                console.warn(`[AI JSON Parse Failover]: Model "${model}" returned unparseable output (${parseErr.message}). Trying next model.`);
+                lastError = parseErr;
+                break; // Failover to next model
+              }
+            }
+
+            return { content: cleanContent, model };
           }
         }
 
         const errMsg = data.error?.message || `HTTP ${response.status}`;
 
-        if (response.status === 400 && /max_tokens|context_window/i.test(errMsg) && currentMaxTokens > 512) {
-          currentMaxTokens = 512;
+        // Authentication failure -> no point retrying other models with an invalid key
+        if (response.status === 401) {
+          const authErr = new Error('Invalid AI API key (401 Unauthorized). Check GROK_API_KEY in .env / Render.');
+          authErr.code = 'INVALID_API_KEY';
+          throw authErr;
+        }
+
+        // Dynamic max_tokens cap adjustment
+        if (response.status === 400 && /max_tokens|context_window/i.test(errMsg) && currentMaxTokens > 450) {
+          currentMaxTokens = 450;
           continue;
         }
 
+        // Incompatible or deprecated model -> blacklist & failover
         if (
           response.status === 400 ||
           response.status === 403 ||
@@ -361,9 +463,10 @@ async function callGroqAI({ messages, maxTokens = 800, temperature = 0.2 }) {
           break;
         }
 
+        // Rate limit (429) or transient upstream error (5xx)
         if (response.status === 429 || response.status >= 500) {
           lastError = new Error(errMsg);
-          const delayMs = 800 * Math.pow(2, attempt);
+          const delayMs = 700 * Math.pow(2, attempt);
           await new Promise(r => setTimeout(r, delayMs));
           continue;
         }
@@ -371,35 +474,16 @@ async function callGroqAI({ messages, maxTokens = 800, temperature = 0.2 }) {
         lastError = new Error(errMsg);
         break;
       } catch (networkErr) {
+        if (networkErr.code === 'INVALID_API_KEY') throw networkErr;
         lastError = networkErr;
         if (attempt === 0) {
-          await new Promise(r => setTimeout(r, 600));
+          await new Promise(r => setTimeout(r, 500));
         }
       }
     }
   }
 
   throw lastError || new Error('AI service temporarily unavailable.');
-}
-
-function extractJsonFromText(rawText) {
-  if (!rawText || typeof rawText !== 'string') {
-    throw new Error('Empty AI response');
-  }
-
-  const stripped = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-
-  try {
-    return JSON.parse(stripped);
-  } catch (_) {
-    const firstBrace = stripped.indexOf('{');
-    const lastBrace = stripped.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace > firstBrace) {
-      const candidate = stripped.slice(firstBrace, lastBrace + 1);
-      return JSON.parse(candidate);
-    }
-    throw new Error('Could not parse structured JSON from AI output');
-  }
 }
 
 function findInVerifiedCatalog(query) {
@@ -409,26 +493,44 @@ function findInVerifiedCatalog(query) {
     item.name.toLowerCase().includes(q) ||
     item.genericName.toLowerCase().includes(q) ||
     item.category.toLowerCase().includes(q) ||
-    item.shortSummary.toLowerCase().includes(q)
+    item.shortSummary.toLowerCase().includes(q) ||
+    item.uses.some(u => u.toLowerCase().includes(q))
   );
 }
 
 // ============================================================================
-// ENDPOINTS
+// DIAGNOSTIC HEALTH CHECK ENDPOINTS
 // ============================================================================
-app.get('/api/health', async (req, res) => {
+app.get('/api/health', (req, res) => {
   const apiKey = getConfiguredApiKey();
   const hasKey = Boolean(apiKey && apiKey !== 'DEMO' && !apiKey.includes('paste_your'));
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     aiConfigured: hasKey,
+    aiProvider: apiKey.startsWith('xai-') ? 'xAI Grok' : 'Groq Cloud',
     mapsConfigured: Boolean(process.env.GOOGLE_MAPS_API_KEY),
     firebaseConfigured: Boolean(process.env.FIREBASE_API_KEY),
     blacklistedModels: Array.from(blacklistedModels)
   });
 });
 
+app.get('/api/health/ai', async (req, res) => {
+  try {
+    const { content, model } = await callGroqAI({
+      messages: [{ role: 'user', content: 'Reply with OK' }],
+      maxTokens: 20,
+      temperature: 0
+    });
+    res.json({ ok: true, model, reply: content });
+  } catch (err) {
+    res.status(503).json({ ok: false, error: err.message });
+  }
+});
+
+// ============================================================================
+// FIREBASE AUTH CONFIG ENDPOINT
+// ============================================================================
 app.get('/api/auth-config', (req, res) => {
   res.json({
     apiKey: (process.env.FIREBASE_API_KEY || '').trim(),
@@ -438,6 +540,9 @@ app.get('/api/auth-config', (req, res) => {
   });
 });
 
+// ============================================================================
+// REAL GOOGLE MAPS LOCATION & PHARMACY TRACKER
+// ============================================================================
 app.post('/api/location', async (req, res) => {
   const { lat, lng } = req.body || {};
   if (typeof lat !== 'number' || typeof lng !== 'number' || Number.isNaN(lat) || Number.isNaN(lng)) {
@@ -499,6 +604,9 @@ app.post('/api/location', async (req, res) => {
   }
 });
 
+// ============================================================================
+// DYNAMIC MEDICINE RECOMMENDATIONS ENDPOINT (ROTATING + AI ENRICHED + CACHED)
+// ============================================================================
 app.get('/api/recommendations', async (req, res) => {
   try {
     const excludeParam = (req.query.exclude || '').trim();
@@ -521,19 +629,19 @@ app.get('/api/recommendations', async (req, res) => {
     if (uncached.length > 0) {
       try {
         const namesList = uncached.map(m => `${m.id}: ${m.name}`).join('; ');
-        const prompt = `For each medicine listed (${namesList}), provide a concise 1-sentence authoritative safety note in English distinguishing adult vs pediatric/prescription status.
+        const prompt = `For each medicine listed (${namesList}), provide a concise 1-sentence safety note in English distinguishing adult vs pediatric/prescription status.
 Return ONLY a JSON object mapping each id to its note string, e.g. {"med-paracetamol-650": "..."}`;
 
-        const { content } = await callGroqAI({
+        const { json: parsedNotes } = await callGroqAI({
           messages: [
             { role: 'system', content: 'You are a clinical pharmacology assistant. Output valid JSON in English only.' },
             { role: 'user', content: prompt }
           ],
-          maxTokens: 350,
-          temperature: 0.1
+          maxTokens: 320,
+          temperature: 0.1,
+          expectJson: true
         });
 
-        const parsedNotes = extractJsonFromText(content);
         uncached.forEach(item => {
           const note = typeof parsedNotes[item.id] === 'string' ? parsedNotes[item.id] : item.doctorAdvice;
           aiEnrichedRecCache.set(item.id, { ...item, aiSafetyHighlight: note });
@@ -560,16 +668,19 @@ Return ONLY a JSON object mapping each id to its note string, e.g. {"med-paracet
   }
 });
 
+// ============================================================================
+// SEARCH ENGINE BACKEND (GROQ AI + JSON AUTO-REPAIR + CACHE + VERIFIED FALLBACK)
+// ============================================================================
 app.get('/api/medicines', async (req, res) => {
   const query = (req.query.q || '').trim();
 
   if (!query) {
-    return res.status(400).json({ error: 'Please enter a medicine or supplement name to search.', medicines: [] });
+    return res.status(400).json({ error: 'Please enter a medicine, supplement, or medical term to search.', medicines: [] });
   }
 
-  if (query.length < 2 || query.length > 80 || !/[a-zA-Z]/.test(query)) {
+  if (query.length < 2 || query.length > 100 || !/[a-zA-Z]/.test(query)) {
     return res.status(400).json({
-      error: 'Please enter a valid medicine or supplement name (2–80 characters, including letters).',
+      error: 'Please enter a valid medical or medicine name (2–100 characters, including letters).',
       medicines: []
     });
   }
@@ -582,67 +693,65 @@ app.get('/api/medicines', async (req, res) => {
   }
 
   try {
-    const prompt = `Provide factual Indian clinical reference details in English for the medicine or supplement: "${query}".
-If "${query}" is NOT a real medicine, active pharmaceutical ingredient, vaccine, or recognized medical supplement, output ONLY: {"isMedicine": false}
-
-Otherwise, output ONLY a single raw JSON object in English (no markdown fences, no commentary) matching this exact schema:
+    // Compact schema designed to fit cleanly within 500 tokens without truncation
+    const prompt = `Provide factual Indian clinical reference data in English for the medical query: "${query}" (can be a brand medicine, generic drug, supplement, or medical condition/symptom).
+If "${query}" is completely unrelated to medicine, health, or healthcare, return ONLY: {"valid":false}
+Otherwise return ONLY a compact raw JSON object (no markdown):
 {
-  "isMedicine": true,
-  "name": "Standard Brand & Generic Name",
-  "genericName": "Active Salt Composition & Strength (IP/USP)",
-  "category": "Pharmacological Class",
+  "valid": true,
+  "name": "Medicine or Clinical Topic Name",
+  "genericName": "Active Composition / Clinical Category",
+  "category": "Pharmacological or Clinical Class",
   "prescriptionStatus": "OTC / Supplement / Prescription Only (Schedule H)",
-  "shortSummary": "Concise 1-sentence clinical summary",
-  "description": "Mechanism of action",
-  "basePriceINR": 95.00,
-  "approxCostRangeINR": "₹80 – ₹110 (Standard Pack)",
+  "description": "Concise 1-2 sentence mechanism or clinical overview",
+  "basePriceINR": 95,
   "packSize": "Strip of 10 Tablets or Standard Unit",
-  "uses": ["Primary clinical use 1", "Primary clinical use 2", "Primary clinical use 3"],
-  "sideEffects": ["Common side effect 1", "Common side effect 2", "Serious precaution"],
-  "standardDosage": "General authoritative reference distinguishing Adult vs Pediatric vs Prescription-Only status. Never prescribe personalized self-medication.",
-  "curableDiseases": ["Approved clinical indication 1", "Approved clinical indication 2"],
-  "doctorAdvice": "Crucial safety precautions, contraindications, and advice to consult a qualified doctor.",
-  "referenceSource": "Indian Pharmacopoeia (IP) / CDSCO / WHO Reference"
+  "uses": ["Use 1", "Use 2", "Use 3"],
+  "sideEffects": ["Side effect 1", "Side effect 2"],
+  "standardDosage": "General reference distinguishing Adult vs Pediatric vs Prescription-Only rules (no self-medication)",
+  "curableDiseases": ["Indication 1", "Indication 2"],
+  "doctorAdvice": "Key precautions and advice to consult a qualified doctor"
 }`;
 
-    const { content, model } = await callGroqAI({
+    const { json: parsed, model } = await callGroqAI({
       messages: [
         {
           role: 'system',
-          content: 'You are a strict clinical pharmacology JSON API grounded in Indian Pharmacopoeia (IP), CDSCO, and WHO reference standards. Respond strictly in English. Never invent prices or promote unsupervised prescription drug use. Output valid JSON only.'
+          content: 'You are a clinical pharmacology JSON API grounded in Indian Pharmacopoeia (IP) and CDSCO standards. Output concise, valid English JSON only.'
         },
         { role: 'user', content: prompt }
       ],
-      maxTokens: 850,
-      temperature: 0.1
+      maxTokens: 480,
+      temperature: 0.1,
+      expectJson: true
     });
 
-    const parsed = extractJsonFromText(content);
-
-    if (parsed.isMedicine === false) {
+    if (parsed.valid === false || parsed.isMedicine === false) {
       return res.json({
         medicines: [],
-        message: `"${query}" was not recognized as a valid medicine or clinical supplement.`
+        message: `"${query}" was not recognized as a valid medicine, supplement, or medical term.`
       });
     }
+
+    const basePrice = Number(parsed.basePriceINR) > 0 ? Number(parsed.basePriceINR) : 95.00;
 
     const sanitizedMed = {
       id: `ai-${Date.now()}`,
       name: parsed.name || query,
-      genericName: parsed.genericName || 'Refer to official pack insert',
+      genericName: parsed.genericName || 'Refer to official clinical pack insert',
       category: parsed.category || 'Clinical Preparation',
       prescriptionStatus: parsed.prescriptionStatus || 'Consult Physician / Pharmacist',
-      shortSummary: parsed.shortSummary || '',
-      description: parsed.description || 'Clinical information retrieved via AI pharmacology reference.',
-      basePriceINR: Number(parsed.basePriceINR) > 0 ? Number(parsed.basePriceINR) : 95.00,
-      approxCostRangeINR: parsed.approxCostRangeINR || `Approx. ₹${Number(parsed.basePriceINR || 95).toFixed(0)}`,
+      shortSummary: parsed.description || '',
+      description: parsed.description || 'Clinical information retrieved via live AI pharmacology reference.',
+      basePriceINR: basePrice,
+      approxCostRangeINR: `Approx. ₹${basePrice.toFixed(0)} (${parsed.packSize || 'Standard Pack'})`,
       packSize: parsed.packSize || 'Standard Pack',
-      uses: Array.isArray(parsed.uses) && parsed.uses.length > 0 ? parsed.uses : ['Consult a qualified physician for approved indications'],
-      sideEffects: Array.isArray(parsed.sideEffects) && parsed.sideEffects.length > 0 ? parsed.sideEffects : ['Consult package insert or pharmacist for adverse effects'],
+      uses: Array.isArray(parsed.uses) && parsed.uses.length > 0 ? parsed.uses : ['Consult a qualified physician for approved clinical indications'],
+      sideEffects: Array.isArray(parsed.sideEffects) && parsed.sideEffects.length > 0 ? parsed.sideEffects : ['Consult official package insert or pharmacist for adverse effects'],
       standardDosage: parsed.standardDosage || 'Dosage must be determined by a qualified medical practitioner based on age and clinical condition.',
       curableDiseases: Array.isArray(parsed.curableDiseases) && parsed.curableDiseases.length > 0 ? parsed.curableDiseases : ['Approved clinical indications only'],
-      doctorAdvice: parsed.doctorAdvice || 'Do not self-medicate. Consult a registered medical practitioner before taking any medicine.',
-      referenceSource: parsed.referenceSource || `AI Clinical Reference (${model})`
+      doctorAdvice: parsed.doctorAdvice || 'Do not self-medicate. Consult a registered medical practitioner before taking any medication.',
+      referenceSource: `Live AI Clinical Reference (${model})`
     };
 
     searchCache.set(normalizedKey, { timestamp: Date.now(), data: [sanitizedMed] });
@@ -659,8 +768,14 @@ Otherwise, output ONLY a single raw JSON object in English (no markdown fences, 
       });
     }
 
+    const diagnosticHint = err.code === 'MISSING_API_KEY'
+      ? 'Server configuration notice: GROK_API_KEY is missing in environment variables.'
+      : err.code === 'INVALID_API_KEY'
+        ? 'Server configuration notice: GROK_API_KEY was rejected (401 Unauthorized).'
+        : 'The AI clinical search service is temporarily busy or unreachable. Please try again in a few seconds.';
+
     return res.status(503).json({
-      error: 'The AI clinical search service is temporarily busy or unreachable. Please try again in a few seconds or select one of the verified medicines below.',
+      error: diagnosticHint,
       medicines: []
     });
   }
@@ -672,10 +787,9 @@ Otherwise, output ONLY a single raw JSON object in English (no markdown fences, 
 const CHAT_SYSTEM_INSTRUCTION = `
 You are MediBot, a polite, knowledgeable medical information assistant for MediPulse India.
 1. STRICT LANGUAGE RULE (ENGLISH OR HINGLISH ONLY):
-   - Detect whether the user is writing in English or Hinglish (Hindi written in the Latin/English alphabet).
    - If the user writes in English, respond 100% in clear Indian English.
-   - If the user writes in Hinglish (for example: "Sir dard ke liye konsi medicine lu?" or "Biotin ke kya fayde hain?"), respond naturally in Hinglish using the English/Roman alphabet.
-   - NEVER respond in Arabic, Chinese, Russian, Spanish, or any non-English foreign language or script under any circumstances.
+   - If the user writes in Hinglish (Hindi written in the Latin/English alphabet), respond naturally in Hinglish using the English/Roman alphabet.
+   - NEVER respond in Arabic, Chinese, Russian, or any non-English foreign script.
 2. Answer everyday greetings and general questions naturally and concisely.
 3. For medicine or health queries, use clear headings, bullet points, and bold labels for Common Uses, Approximate INR Cost, Possible Side Effects, and General Reference Dosage (clearly separating Adult, Pediatric, and Prescription-Only rules).
 4. Never diagnose conditions, never provide personalized dosage prescriptions, and never encourage unsupervised use of prescription medicines. Always remind the user to consult a qualified doctor or pharmacist.
@@ -693,7 +807,7 @@ app.post('/api/chat', async (req, res) => {
     const safeHistory = Array.isArray(history)
       ? history.slice(-8).map(turn => ({
           role: turn.role === 'model' ? 'assistant' : 'user',
-          content: String(turn.text || '').slice(0, 1200)
+          content: String(turn.text || '').slice(0, 1000)
         }))
       : [];
 
@@ -702,13 +816,13 @@ app.post('/api/chat', async (req, res) => {
       ...safeHistory,
       {
         role: 'user',
-        content: `${cleanMessage}\n\n[System Reminder: Reply strictly in English or Hinglish (Roman script) matching the user's message language. Do not use Arabic or any other language.]`
+        content: `${cleanMessage}\n\n[System Note: Reply strictly in English or Hinglish matching the user's language.]`
       }
     ];
 
     const { content } = await callGroqAI({
       messages,
-      maxTokens: 700,
+      maxTokens: 500,
       temperature: 0.2
     });
 

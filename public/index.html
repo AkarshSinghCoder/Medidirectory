@@ -22,7 +22,7 @@
 
       <div class="divider"><span>OR SIGN IN WITH MOBILE OTP</span></div>
       <form id="phone-auth-form">
-        <label for="phone-input" class="input-label">Mobile Number (with +91)</label>
+        <label for="phone-input" class="input-label">10-Digit Mobile Number (with +91)</label>
         <div class="phone-input-group">
           <input type="tel" id="phone-input" placeholder="+91 98765 43210" autocomplete="tel" required />
           <button type="submit" id="send-otp-btn" class="btn btn-primary">Send OTP</button>
@@ -76,29 +76,28 @@
       <h2>Search Any Medicine or Supplement</h2>
       <p class="hero-sub">Powered by live Groq AI fetching real-time clinical data.</p>
       <div class="search-bar-wrapper">
-        <input type="search" id="medicine-search-input" class="search-input" placeholder="Search Biotin, Paracetamol, Cetirizine, ORS..." autocomplete="off" />
+        <input type="search" id="medicine-search-input" class="search-input" placeholder="Search Biotin, Paracetamol, Cetirizine, ORS, Migraine..." autocomplete="off" />
         <button id="search-btn" class="btn btn-primary search-btn" type="button">Search AI</button>
       </div>
 
-      <!-- DYNAMIC MEDICINE RECOMMENDATIONS SECTION BELOW SEARCH BAR -->
+      <!-- SEARCH RESULTS RENDERED IMMEDIATELY BELOW THE SEARCH BAR -->
+      <section aria-label="Medicine Results" class="immediate-results-section">
+        <div id="medicine-results-container" class="medicine-results-grid"></div>
+      </section>
+
+      <!-- DYNAMIC MEDICINE RECOMMENDATIONS SECTION -->
       <div class="recommendations-wrapper" aria-label="Dynamic Medicine Recommendations">
         <div class="rec-header-bar">
           <span class="quick-overview-header">Essential Medicine Reference Overview (Rotates on Refresh)</span>
           <button id="refresh-rec-btn" class="btn-link rec-refresh-btn" type="button">Rotate List ↻</button>
         </div>
 
-        <div id="basic-descriptions-strip" class="basic-strip">
-          <!-- Populated dynamically via /api/recommendations -->
-        </div>
+        <div id="basic-descriptions-strip" class="basic-strip"></div>
 
         <div id="rec-disclaimer-banner" class="rec-disclaimer">
           <strong>Medical Safety Disclaimer:</strong> Reference information is for educational awareness only and is not a substitute for professional medical advice. Do not self-medicate. Prescription-only (Schedule H) medicines require supervision by a registered medical practitioner.
         </div>
       </div>
-    </section>
-
-    <section aria-label="Medicine Results">
-      <div id="medicine-results-container" class="medicine-results-grid"></div>
     </section>
   </main>
 
@@ -117,7 +116,7 @@
       <button id="close-chat-btn" class="close-btn" type="button" aria-label="Close Chat">✖</button>
     </div>
     <div id="chat-messages" class="chat-messages">
-      <div class="chat-bubble bot-bubble">Hello! I can answer general everyday questions or provide structured medical info. How can I help you?</div>
+      <div class="chat-bubble bot-bubble">Hello! I can answer general everyday questions or provide structured medical info in English or Hinglish. How can I help you?</div>
     </div>
     <form id="chat-form" class="chat-input-bar">
       <input type="text" id="chat-input" placeholder="Type your message..." autocomplete="off" required />
