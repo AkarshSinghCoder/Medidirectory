@@ -19,6 +19,7 @@ let currentLocalityData = {
 };
 let lastSearchPayload = null;
 let lastSearchQuery = '';
+let searchConversationHistory = [];
 let chatHistory = [];
 let firebaseAuth = null;
 
@@ -94,7 +95,6 @@ async function initFirebase() {
       const app = initializeApp(config);
       firebaseAuth = getAuth(app);
 
-      // Persist authenticated sessions across page refreshes
       await setPersistence(firebaseAuth, browserLocalPersistence);
 
       onAuthStateChanged(firebaseAuth, (user) => {
@@ -193,7 +193,7 @@ const REC_STORAGE_KEY = 'medipulse_last_rec_ids';
 async function loadRecommendations() {
   if (!basicStrip) return;
   refreshRecBtn.disabled = true;
-  basicStrip.innerHTML = `<div class="basic-pill-card"><p class="rec-meta-line">Loading rotating clinical reference cards...</p></div>`;
+  basicStrip.innerHTML = `<div class="basic-pill-card"><p class="rec-meta-line">Loading rotating clinical &amp; Ayurvedic reference cards...</p></div>`;
 
   try {
     const previousIds = sessionStorage.getItem(REC_STORAGE_KEY) || '';
@@ -215,7 +215,7 @@ async function loadRecommendations() {
     basicStrip.innerHTML = list.map((med) => {
       const isRx = /prescription|schedule h/i.test(med.prescriptionStatus || '');
       const badgeClass = isRx ? 'rx' : 'otc';
-      const badgeLabel = isRx ? 'Rx Only' : 'OTC / Supplement';
+      const badgeLabel = isRx ? 'Rx Only' : (med.systemOfMedicine || 'OTC / Supplement');
       const usesText = Array.isArray(med.uses) ? med.uses.slice(0, 2).join('; ') : '';
       const sideEffectsText = Array.isArray(med.sideEffects) ? med.sideEffects.slice(0, 2).join('; ') : '';
 
@@ -240,7 +240,7 @@ async function loadRecommendations() {
         const medName = card.getAttribute('data-med-name');
         if (medName) {
           searchInput.value = medName;
-          searchAI(medName);
+          searchAI(medName, false);
         }
       });
     });
@@ -259,32 +259,44 @@ if (refreshRecBtn) {
 }
 
 // ============================================================================
-// INTELLIGENT MULTI-INTENT SEARCH ENGINE & IMMEDIATE RESULTS UI
+// UNIVERSAL CONVERSATIONAL MEDICAL AI SEARCH ENGINE
 // ============================================================================
 function clearSearchResults() {
   lastSearchPayload = null;
   lastSearchQuery = '';
+  searchConversationHistory = [];
   resultsContainer.innerHTML = '';
   searchInput.value = '';
   searchInput.focus();
 }
 
-async function searchAI(query) {
+async function searchAI(query, isFollowUp = false) {
   const cleanQuery = (query || '').trim();
   if (!cleanQuery) {
     resultsContainer.innerHTML = `
       <div class="med-detail-card">
-        <h3>Please enter a search query</h3>
-        <p>Search any medicine (Allopathic, Ayurvedic, Homeopathic, Veterinary), symptom, diagnostic test, medical device, or general question.</p>
+        <h3>Ask any medical or healthcare question</h3>
+        <p>Search Allopathic or Ayurvedic medicines (e.g., Dolo 650, Arsh Kalp, Ashwagandha), medical devices (BP machine), symptoms (weakness, sugar problem), sexual health, or pet healthcare.</p>
       </div>`;
     return;
   }
 
+  if (!isFollowUp) {
+    searchConversationHistory = [];
+  }
+
   searchBtn.disabled = true;
-  resultsContainer.innerHTML = `<div class="med-detail-card"><h3>Analyzing "${escapeHtml(cleanQuery)}" via intelligent clinical &amp; AI search...</h3></div>`;
+  resultsContainer.innerHTML = `<div class="med-detail-card"><h3>Understanding "${escapeHtml(cleanQuery)}" via Universal Medical AI...</h3></div>`;
 
   try {
-    const resp = await fetch(`/api/medicines?q=${encodeURIComponent(cleanQuery)}`);
+    const resp = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: cleanQuery,
+        history: searchConversationHistory
+      })
+    });
     const data = await resp.json();
 
     if (!resp.ok) {
@@ -302,6 +314,14 @@ async function searchAI(query) {
 
     lastSearchPayload = data;
     lastSearchQuery = cleanQuery;
+
+    // Record turn into conversational search context
+    searchConversationHistory.push({ role: 'user', text: cleanQuery });
+    searchConversationHistory.push({
+      role: 'assistant',
+      text: `Interpreted: ${data.interpretedQuery || cleanQuery} (${data.intentType})`
+    });
+
     renderSearchPayload(data, cleanQuery);
   } catch (error) {
     resultsContainer.innerHTML = `
@@ -310,7 +330,7 @@ async function searchAI(query) {
           <h3>Network Connection Error</h3>
           <button type="button" id="clear-results-btn" class="btn-link">Clear ✕</button>
         </div>
-        <p>Could not reach the search server. Please check your internet connection and try again.</p>
+        <p>Could not reach the medical AI search server. Please check your internet connection and try again.</p>
       </div>`;
     document.getElementById('clear-results-btn')?.addEventListener('click', clearSearchResults);
   } finally {
@@ -318,129 +338,183 @@ async function searchAI(query) {
   }
 }
 
-function renderSearchPayload(data, searchedQuery) {
-  const intentType = data.intentType || 'medicine';
+function buildFollowUpSectionHtml(followUpQuestions = []) {
+  const chipsHtml = (followUpQuestions || [])
+    .map(q => `<button type="button" class="chip-btn followup-chip" data-followup="${escapeHtml(q)}">${escapeHtml(q)}</button>`)
+    .join('');
 
-  // 1. Clarification Card for ambiguous queries
-  if (intentType === 'clarification' && data.clarification) {
-    const chipsHtml = (data.clarification.suggestions || [])
-      .map(opt => `<button type="button" class="chip-btn" data-suggestion="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`)
+  return `
+    <div class="followup-panel">
+      <span class="followup-label">Continue Conversational Medical Search</span>
+      ${chipsHtml ? `<div class="clarification-chips">${chipsHtml}</div>` : ''}
+      <form id="inline-followup-form" class="followup-form">
+        <input type="text" id="inline-followup-input" placeholder="Ask a follow-up question (e.g., side effects, Ayurvedic vs Allopathic, child dosage)..." autocomplete="off" required />
+        <button type="submit" class="btn btn-primary">Ask Follow-Up</button>
+      </form>
+    </div>
+  `;
+}
+
+function attachSearchInteractiveHandlers() {
+  document.getElementById('clear-results-btn')?.addEventListener('click', clearSearchResults);
+
+  resultsContainer.querySelectorAll('.followup-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const nextQ = btn.getAttribute('data-followup');
+      if (nextQ) {
+        searchInput.value = nextQ;
+        searchAI(nextQ, true);
+      }
+    });
+  });
+
+  const inlineForm = document.getElementById('inline-followup-form');
+  const inlineInput = document.getElementById('inline-followup-input');
+  if (inlineForm && inlineInput) {
+    inlineForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const followText = inlineInput.value.trim();
+      if (followText) {
+        searchInput.value = followText;
+        searchAI(followText, true);
+      }
+    });
+  }
+}
+
+function renderSearchPayload(data, searchedQuery) {
+  const intentType = data.intentType || 'clinical_guidance';
+  const langBadge = data.detectedLanguage
+    ? `<span class="lang-pill">${escapeHtml(data.detectedLanguage)}</span>`
+    : '';
+  const interpretedLabel = data.interpretedQuery && data.interpretedQuery.toLowerCase() !== searchedQuery.toLowerCase()
+    ? `Interpreted "${escapeHtml(searchedQuery)}" → ${escapeHtml(data.interpretedQuery)}`
+    : `Result for "${escapeHtml(data.interpretedQuery || searchedQuery)}"`;
+
+  const toolbarHtml = `
+    <div class="results-toolbar">
+      <span>${interpretedLabel}${langBadge}</span>
+      <button type="button" id="clear-results-btn" class="btn-link">Clear Result ✕</button>
+    </div>
+  `;
+
+  // 1. Polite Non-Medical Redirection
+  if (intentType === 'non_medical_redirect' && data.redirect) {
+    const examples = (data.redirect.exampleQueries || [])
+      .map(ex => `<button type="button" class="chip-btn followup-chip" data-followup="${escapeHtml(ex)}">${escapeHtml(ex)}</button>`)
       .join('');
 
     resultsContainer.innerHTML = `
-      <div class="results-toolbar">
-        <span>Clarification Needed for "${escapeHtml(searchedQuery)}"</span>
-        <button type="button" id="clear-results-btn" class="btn-link">Clear ✕</button>
-      </div>
+      ${toolbarHtml}
       <article class="med-detail-card">
-        <h3 class="med-title">${escapeHtml(data.clarification.question)}</h3>
-        <p class="med-generic" style="margin-top: 0.35rem;">Select one of the specific options below to view detailed reference information:</p>
-        <div class="clarification-chips">${chipsHtml}</div>
+        <span class="med-category-tag">Healthcare Specialist Scope</span>
+        <h3 class="med-title">${escapeHtml(data.redirect.title)}</h3>
+        <p style="margin-top: 0.6rem; color: #334155;">${escapeHtml(data.redirect.message)}</p>
+        ${examples ? `<div style="margin-top: 1rem;"><span class="followup-label">Try Asking a Medical Question:</span><div class="clarification-chips">${examples}</div></div>` : ''}
       </article>
     `;
-
-    resultsContainer.querySelectorAll('.chip-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const chosen = btn.getAttribute('data-suggestion');
-        if (chosen) {
-          searchInput.value = chosen;
-          searchAI(chosen);
-        }
-      });
-    });
-    document.getElementById('clear-results-btn')?.addEventListener('click', clearSearchResults);
+    attachSearchInteractiveHandlers();
     return;
   }
 
-  // 2. Non-Medical General Knowledge Card
-  if (intentType === 'non_medical' && data.generalAnswer) {
+  // 2. Medical Equipment & Diagnostic Devices
+  if (intentType === 'medical_equipment' && data.device) {
+    const d = data.device;
     resultsContainer.innerHTML = `
-      <div class="results-toolbar">
-        <span>General Information Result for "${escapeHtml(searchedQuery)}"</span>
-        <button type="button" id="clear-results-btn" class="btn-link">Clear ✕</button>
-      </div>
-      <article class="med-detail-card">
-        <span class="med-category-tag">${escapeHtml(data.generalAnswer.category || 'General Information')}</span>
-        <h3 class="med-title">${escapeHtml(data.generalAnswer.title || searchedQuery)}</h3>
-        <p style="margin-top: 0.65rem; color: #334155;">${escapeHtml(data.generalAnswer.summary)}</p>
-      </article>
-    `;
-    document.getElementById('clear-results-btn')?.addEventListener('click', clearSearchResults);
-    return;
-  }
-
-  // 3. Condition, Symptom, Diagnostic Test, or Medical Device Card
-  if (intentType === 'condition_or_device' && data.topic) {
-    const t = data.topic;
-    resultsContainer.innerHTML = `
-      <div class="results-toolbar">
-        <span>Clinical &amp; Healthcare Reference for "${escapeHtml(searchedQuery)}"</span>
-        <button type="button" id="clear-results-btn" class="btn-link">Clear ✕</button>
-      </div>
+      ${toolbarHtml}
       <article class="med-detail-card">
         <div class="med-card-top">
           <div>
-            <span class="med-category-tag">${escapeHtml(t.subType || 'Healthcare Reference')}</span>
-            <h3 class="med-title">${escapeHtml(t.title)}</h3>
-            <p class="med-generic" style="margin-top: 0.35rem;">${escapeHtml(t.overview)}</p>
+            <span class="med-system-tag">Medical Equipment &amp; Device</span>
+            <span class="med-category-tag">${escapeHtml(d.category || 'Diagnostic Equipment')}</span>
+            <h3 class="med-title">${escapeHtml(d.title)}</h3>
+            <p class="med-generic" style="margin-top: 0.35rem;">${escapeHtml(d.purpose)}</p>
           </div>
         </div>
         <div class="med-info-grid">
           <div class="info-panel">
-            <h4>Key Clinical Facts &amp; Parameters</h4>
-            <ul>${(t.keyPoints || []).map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>
+            <h4>Types &amp; Variants Available</h4>
+            <ul>${(d.typesAvailable || []).map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>
           </div>
           <div class="info-panel">
-            <h4>Standard Care, Preparation or Usage</h4>
-            <p>${escapeHtml(t.managementOrUsage)}</p>
+            <h4>Selection &amp; Accuracy Criteria</h4>
+            <ul>${(d.selectionCriteria || []).map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ul>
           </div>
-          <div class="info-panel side-effects-panel">
-            <h4>Warning Signs &amp; Precautions</h4>
-            <ul>${(t.redFlags || []).map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>
+          <div class="info-panel">
+            <h4>Proper Usage Guidelines</h4>
+            <p>${escapeHtml(d.properUsage)}</p>
           </div>
         </div>
         <div class="doctor-advice-banner">
-          <strong>Medical Guidance:</strong> ${escapeHtml(t.doctorAdvice)}
-          <div style="font-size: 0.78rem; color: #475569; margin-top: 0.35rem;">Reference: ${escapeHtml(t.referenceSource || 'Standard Clinical Reference')} • Always consult a qualified doctor for personal diagnosis or treatment.</div>
+          <strong>Calibration, Safety &amp; Clinical Guidance:</strong> ${escapeHtml(d.safetyAndMaintenance)}
+          <div style="font-size: 0.78rem; color: #475569; margin-top: 0.35rem;">Reference: ${escapeHtml(d.referenceSource || 'MediPulse Medical AI')} • Discuss abnormal home readings with a qualified doctor.</div>
         </div>
       </article>
+      ${buildFollowUpSectionHtml(data.followUpQuestions)}
     `;
-    document.getElementById('clear-results-btn')?.addEventListener('click', clearSearchResults);
+    attachSearchInteractiveHandlers();
     return;
   }
 
-  // 4. Medicine / Supplement / Ayurvedic / Homeopathic / Veterinary Card(s)
+  // 3. Clinical Guidance (Symptoms, Chronic Conditions, Sexual Health, Veterinary, Comparisons)
+  if (intentType === 'clinical_guidance' && data.guidance) {
+    const g = data.guidance;
+    const isVet = /veterinary/i.test(g.domainTag || '');
+    resultsContainer.innerHTML = `
+      ${toolbarHtml}
+      <article class="med-detail-card">
+        <div class="med-card-top">
+          <div>
+            <span class="med-system-tag">${escapeHtml(g.domainTag || 'Clinical Health Guidance')}</span>
+            <h3 class="med-title">${escapeHtml(g.title)}</h3>
+            <p class="med-generic" style="margin-top: 0.4rem; color: #1e293b;">${escapeHtml(g.overview)}</p>
+          </div>
+        </div>
+        <div class="med-info-grid">
+          <div class="info-panel">
+            <h4>Possible Causes &amp; Key Factors</h4>
+            <ul>${(g.possibleCausesOrFactors || []).map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>
+          </div>
+          <div class="info-panel">
+            <h4>Evaluation, Care &amp; Prevention Options</h4>
+            <ul>${(g.evaluationAndCare || []).map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul>
+          </div>
+          <div class="info-panel side-effects-panel">
+            <h4>Warning Signs (When to Seek Prompt Care)</h4>
+            <ul>${(g.redFlags || []).map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>
+          </div>
+        </div>
+        <div class="doctor-advice-banner">
+          <strong>${isVet ? 'Veterinary Safety Advice:' : 'Medical Safety Advice:'}</strong> ${escapeHtml(g.doctorAdvice)}
+          <div style="font-size: 0.78rem; color: #475569; margin-top: 0.35rem;">Reference: ${escapeHtml(g.referenceSource || 'MediPulse Medical AI')} • Educational information does not replace ${isVet ? 'a licensed veterinarian' : 'a qualified physician'}.</div>
+        </div>
+      </article>
+      ${buildFollowUpSectionHtml(data.followUpQuestions)}
+    `;
+    attachSearchInteractiveHandlers();
+    return;
+  }
+
+  // 4. Medicine / Ayurvedic / Homeopathic / Unani / Siddha / Veterinary Formulation Card(s)
   const medicines = Array.isArray(data.medicines) ? data.medicines : [];
   if (medicines.length === 0) {
     resultsContainer.innerHTML = `
+      ${toolbarHtml}
       <div class="med-detail-card">
-        <div class="rec-card-header">
-          <h3>No matching results found</h3>
-          <button type="button" id="clear-results-btn" class="btn-link">Clear ✕</button>
-        </div>
-        <p>Please try refining your query with a brand name, active ingredient, or symptom.</p>
-      </div>`;
-    document.getElementById('clear-results-btn')?.addEventListener('click', clearSearchResults);
+        <h3>No specific clinical record matched</h3>
+        <p>Try adding a symptom, active ingredient, or system of medicine (Allopathic, Ayurvedic, Homeopathic, or Veterinary) below.</p>
+      </div>
+      ${buildFollowUpSectionHtml(data.followUpQuestions)}
+    `;
+    attachSearchInteractiveHandlers();
     return;
   }
-
-  let toolbarLabel = `Showing result${medicines.length > 1 ? `s (${medicines.length} similar matches distinguished)` : ''} for "${escapeHtml(searchedQuery)}"`;
-  if (data.wasCorrected && data.correctedQuery) {
-    toolbarLabel = `Showing results for "${escapeHtml(data.correctedQuery)}" (corrected from "${escapeHtml(searchedQuery)}")`;
-  }
-
-  const toolbarHtml = `
-    <div class="results-toolbar">
-      <span>${toolbarLabel}</span>
-      <button type="button" id="clear-results-btn" class="btn-link">Clear Result ✕</button>
-    </div>
-  `;
 
   const noticeBanner = data.notice
     ? `<div class="rec-disclaimer">${escapeHtml(data.notice)}</div>`
     : '';
 
-  resultsContainer.innerHTML = toolbarHtml + noticeBanner + medicines.map((med) => {
+  const cardsHtml = medicines.map((med) => {
     const basePrice = Number(med.basePriceINR) || 95.00;
     const isVet = /veterinary/i.test(med.systemOfMedicine || '') || /veterinary/i.test(med.prescriptionStatus || '');
     const pharmacies = Array.isArray(currentLocalityData.nearbyPharmacies)
@@ -465,7 +539,8 @@ function renderSearchPayload(data, searchedQuery) {
             <span class="med-category-tag">${escapeHtml(med.category || 'Medicine')}</span>
             <span class="med-category-tag">${escapeHtml(med.prescriptionStatus || 'Clinical Reference')}</span>
             <h3 class="med-title">${escapeHtml(med.name)}</h3>
-            <p class="med-generic"><strong>Composition:</strong> ${escapeHtml(med.genericName)} • ${escapeHtml(med.packSize || 'Standard Pack')}</p>
+            <p class="med-generic"><strong>Composition / Ingredients:</strong> ${escapeHtml(med.genericName)} • ${escapeHtml(med.packSize || 'Standard Pack')}</p>
+            ${med.evidenceSummary ? `<div class="evidence-box"><strong>Evidence &amp; Clinical Context:</strong> ${escapeHtml(med.evidenceSummary)}</div>` : ''}
           </div>
           <div class="price-box">
             <div class="mrp-line">Approx. MRP: <span class="mrp-amount">₹${basePrice.toFixed(2)}</span></div>
@@ -473,28 +548,29 @@ function renderSearchPayload(data, searchedQuery) {
           </div>
         </div>
         <div class="med-info-grid">
-          <div class="info-panel"><h4>Clinical Description</h4><p>${escapeHtml(med.description)}</p></div>
-          <div class="info-panel"><h4>Common Medical Uses</h4><ul>${(med.uses || []).map(u => `<li>${escapeHtml(u)}</li>`).join('')}</ul></div>
+          <div class="info-panel"><h4>Overview &amp; Mechanism</h4><p>${escapeHtml(med.description)}</p></div>
+          <div class="info-panel"><h4>Common Medical / Traditional Uses</h4><ul>${(med.uses || []).map(u => `<li>${escapeHtml(u)}</li>`).join('')}</ul></div>
           <div class="info-panel"><h4>General Dosage Reference</h4><p>${escapeHtml(med.standardDosage)}</p></div>
-          <div class="info-panel"><h4>Approved Indications</h4><ul>${(med.curableDiseases || []).map(d => `<li>${escapeHtml(d)}</li>`).join('')}</ul></div>
-          <div class="info-panel side-effects-panel"><h4>Possible Side Effects</h4><ul>${(med.sideEffects || []).map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul></div>
+          <div class="info-panel"><h4>Indications &amp; Supportive Role</h4><ul>${(med.curableDiseases || []).map(d => `<li>${escapeHtml(d)}</li>`).join('')}</ul></div>
+          <div class="info-panel side-effects-panel"><h4>Side Effects, Contraindications &amp; Interactions</h4><ul>${(med.sideEffects || []).map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul></div>
         </div>
         <div class="doctor-advice-banner">
-          <strong>Medical Safety &amp; Advice:</strong> ${escapeHtml(med.doctorAdvice)}
-          <div style="font-size: 0.78rem; color: #475569; margin-top: 0.35rem;">Reference: ${escapeHtml(med.referenceSource || 'Standard Clinical Pharmacopoeia')} • Always consult a qualified physician, veterinarian, or pharmacist before use.</div>
+          <strong>Medical Safety &amp; Doctor's Advice:</strong> ${escapeHtml(med.doctorAdvice)}
+          <div style="font-size: 0.78rem; color: #475569; margin-top: 0.35rem;">Reference: ${escapeHtml(med.referenceSource || 'MediPulse Medical AI')} • Consult a qualified physician, Ayurvedic practitioner, or veterinarian before use.</div>
         </div>
       </article>
     `;
   }).join('');
 
-  document.getElementById('clear-results-btn')?.addEventListener('click', clearSearchResults);
+  resultsContainer.innerHTML = toolbarHtml + noticeBanner + cardsHtml + buildFollowUpSectionHtml(data.followUpQuestions);
+  attachSearchInteractiveHandlers();
 }
 
-searchBtn.addEventListener('click', () => searchAI(searchInput.value));
+searchBtn.addEventListener('click', () => searchAI(searchInput.value, false));
 searchInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
-    searchAI(searchInput.value);
+    searchAI(searchInput.value, false);
   }
 });
 searchInput.addEventListener('search', () => {

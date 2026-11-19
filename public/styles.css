@@ -38,8 +38,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 /* Search Hero */
 .search-hero { background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 2rem 1.5rem; margin: 1.5rem 0; text-align: center; box-shadow: var(--shadow-md); }
 .search-hero h2 { font-size: clamp(1.35rem, 2.5vw, 1.9rem); margin-bottom: 0.35rem; }
-.hero-sub { color: var(--text-muted); font-size: 0.95rem; max-width: 720px; margin: 0 auto 1.2rem; }
-.search-bar-wrapper { display: flex; max-width: 760px; margin: 0 auto 1rem; gap: 0.6rem; }
+.hero-sub { color: var(--text-muted); font-size: 0.95rem; max-width: 740px; margin: 0 auto 1.2rem; }
+.search-bar-wrapper { display: flex; max-width: 780px; margin: 0 auto 1rem; gap: 0.6rem; }
 .search-input { flex: 1; padding: 0.9rem 1.1rem; border: 2px solid #cbd5e1; border-radius: 10px; font-size: 1rem; outline: none; background: #fff; }
 .search-input:focus { border-color: var(--primary); }
 .btn { padding: 0.75rem 1.25rem; border-radius: 10px; font-weight: 600; font-size: 0.95rem; border: none; cursor: pointer; transition: background-color 0.2s; }
@@ -47,17 +47,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .btn-primary { background: var(--primary); color: #fff; }
 .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
 .btn-success { background: var(--teal); color: #fff; }
-.btn-google { width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.65rem; background: #fff; border: 1px solid #cbd5e1; color: var(--text-main); margin-bottom: 1rem; }
+.btn-google { width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.65rem; background: #fff; border: 1px solid #cbd5e1; color: var(--text-main); margin-bottom: 0.5rem; }
 .btn-google:hover { background: #f8fafc; }
 
-/* Immediate Search Results Area */
+/* Immediate Search Results & Conversational Follow-Up Area */
 .immediate-results-section { text-align: left; margin-top: 0.5rem; }
 .medicine-results-grid:empty { display: none; }
 .medicine-results-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1.5rem; }
-.results-toolbar { display: flex; justify-content: space-between; align-items: center; background: #e0f2fe; border: 1px solid #bae6fd; padding: 0.55rem 0.95rem; border-radius: 8px; font-size: 0.84rem; color: #0369a1; font-weight: 600; flex-wrap: wrap; gap: 0.5rem; }
-.clarification-chips { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 0.85rem; }
-.chip-btn { background: #eff6ff; border: 1px solid #93c5fd; color: #1d4ed8; padding: 0.45rem 0.85rem; border-radius: 999px; font-size: 0.84rem; font-weight: 600; cursor: pointer; transition: background-color 0.15s; }
+.results-toolbar { display: flex; justify-content: space-between; align-items: center; background: #e0f2fe; border: 1px solid #bae6fd; padding: 0.6rem 1rem; border-radius: 8px; font-size: 0.84rem; color: #0369a1; font-weight: 600; flex-wrap: wrap; gap: 0.5rem; }
+.lang-pill { display: inline-block; background: #0284c7; color: #fff; font-size: 0.7rem; padding: 0.12rem 0.5rem; border-radius: 999px; margin-left: 0.45rem; vertical-align: middle; }
+
+.followup-panel { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 1rem; margin-top: 0.25rem; }
+.followup-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.55rem; display: block; }
+.clarification-chips { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-bottom: 0.75rem; }
+.chip-btn { background: #eff6ff; border: 1px solid #93c5fd; color: #1d4ed8; padding: 0.42rem 0.85rem; border-radius: 999px; font-size: 0.83rem; font-weight: 600; cursor: pointer; transition: background-color 0.15s; text-align: left; }
 .chip-btn:hover { background: #dbeafe; }
+.followup-form { display: flex; gap: 0.5rem; }
+.followup-form input { flex: 1; padding: 0.6rem 0.85rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; outline: none; background: #fff; }
+.followup-form input:focus { border-color: var(--primary); }
+.followup-form button { padding: 0.6rem 1rem; font-size: 0.86rem; }
 
 /* Dynamic Medicine Recommendations Section */
 .recommendations-wrapper { margin-top: 1.25rem; border-top: 1px solid var(--border-color); padding-top: 1.15rem; text-align: left; }
@@ -84,6 +92,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .med-system-tag { display: inline-block; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; font-size: 0.75rem; font-weight: 700; padding: 0.18rem 0.55rem; border-radius: 6px; margin-bottom: 0.35rem; margin-right: 0.4rem; }
 .med-title { font-size: 1.35rem; margin-bottom: 0.2rem; }
 .med-generic { font-size: 0.88rem; color: var(--text-muted); }
+.evidence-box { margin-top: 0.65rem; background: #f0fdfa; border: 1px solid #99f6e4; color: #115e59; padding: 0.55rem 0.8rem; border-radius: 8px; font-size: 0.83rem; }
 .price-box { background: #f8fafc; border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 1rem; min-width: 260px; }
 .mrp-amount { font-size: 1.25rem; font-weight: 800; }
 .pharmacy-row { display: flex; justify-content: space-between; padding: 0.2rem 0; font-size: 0.85rem; gap: 0.75rem; }
@@ -103,11 +112,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .brand-badge { display: inline-block; background: #dbeafe; color: #1d4ed8; font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.7rem; border-radius: 999px; margin-bottom: 0.75rem; }
 .modal-card h1 { font-size: 1.35rem; margin-bottom: 0.5rem; }
 .modal-subtitle { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.25rem; }
-.divider { margin: 1.1rem 0; text-align: center; font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
-.input-label { display: block; text-align: left; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.35rem; }
-.phone-input-group { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
-.phone-input-group input { flex: 1; padding: 0.7rem 0.85rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; }
-.otp-actions-row { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
 .status-msg { font-size: 0.82rem; color: var(--primary); margin-top: 0.5rem; min-height: 1.2em; line-height: 1.45; }
 .status-msg.error-text { color: var(--danger-text); }
 
@@ -167,6 +171,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .chat-input-bar input { flex: 1; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.6rem; outline: none; }
 
 @media (max-width: 640px) {
-  .search-bar-wrapper { flex-direction: column; }
+  .search-bar-wrapper, .followup-form { flex-direction: column; }
   .chat-window { right: 12px; bottom: 12px; width: calc(100vw - 24px); }
 }
