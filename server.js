@@ -26,6 +26,9 @@ const VERIFIED_CLINICAL_CATALOG = [
     id: 'med-paracetamol-650',
     name: 'Paracetamol 650mg (Dolo 650 / Calpol 650)',
     genericName: 'Paracetamol IP 650mg',
+    systemOfMedicine: 'Allopathic',
+    dosageForm: 'Tablet',
+    targetSpecies: 'Human',
     category: 'Analgesic & Antipyretic',
     prescriptionStatus: 'OTC / Pharmacist Supervised',
     shortSummary: 'Standard antipyretic for acute fever and mild-to-moderate somatic pain relief.',
@@ -35,7 +38,7 @@ const VERIFIED_CLINICAL_CATALOG = [
     packSize: 'Strip of 15 Tablets',
     uses: ['Reduction of acute fever', 'Tension headaches and migraine relief', 'Dental pain, myalgia, and post-vaccination pyrexia'],
     sideEffects: ['Rare skin hypersensitivity or rash', 'Mild gastric discomfort', 'Hepatotoxicity (liver injury) if daily maximum dose is exceeded'],
-    standardDosage: 'Adults (≥50 kg): 1 tablet (650mg) every 6–8 hours after food as needed (Max 4,000mg/24 hrs). Pediatric (<12 yrs): Do not use 650mg strength; pediatric weight-based oral suspension (10–15 mg/kg/dose) under physician guidance only.',
+    standardDosage: 'Adults (≥50 kg): 1 tablet (650mg) every 6–8 hours after food as needed (Max 4,000mg/24 hrs). Pediatric (<12 yrs): Do not use 650mg strength; weight-based pediatric oral suspension (10–15 mg/kg/dose) under physician guidance only.',
     curableDiseases: ['Symptomatic relief of Acute Febrile Illness', 'Mild-to-Moderate Musculoskeletal Pain'],
     doctorAdvice: 'Maintain at least a 6-hour interval between doses. Avoid alcohol and check other cold/flu medicines for hidden paracetamol to prevent accidental overdose.',
     referenceSource: 'Indian Pharmacopoeia (IP) / National List of Essential Medicines (NLEM)'
@@ -44,6 +47,9 @@ const VERIFIED_CLINICAL_CATALOG = [
     id: 'med-ors-who',
     name: 'Oral Rehydration Salts IP (Electral / WHO ORS)',
     genericName: 'Sodium Chloride, Potassium Chloride, Sodium Citrate & Dextrose Anhydrous IP',
+    systemOfMedicine: 'Allopathic',
+    dosageForm: 'Oral Powder Sachet',
+    targetSpecies: 'Human',
     category: 'Electrolyte & Fluid Replenisher',
     prescriptionStatus: 'OTC (Over-the-Counter)',
     shortSummary: 'WHO-formulated reduced-osmolarity oral electrolyte replacement for dehydration.',
@@ -62,6 +68,9 @@ const VERIFIED_CLINICAL_CATALOG = [
     id: 'med-cetirizine-10',
     name: 'Cetirizine 10mg (Cetzine / Okacet / Alerid)',
     genericName: 'Cetirizine Hydrochloride IP 10mg',
+    systemOfMedicine: 'Allopathic',
+    dosageForm: 'Tablet',
+    targetSpecies: 'Human',
     category: 'Second-Generation Antihistamine',
     prescriptionStatus: 'OTC / Pharmacist Supervised',
     shortSummary: 'Selective peripheral H1-receptor antagonist for allergic rhinitis and urticaria.',
@@ -80,6 +89,9 @@ const VERIFIED_CLINICAL_CATALOG = [
     id: 'med-pantoprazole-40',
     name: 'Pantoprazole 40mg (Pan 40 / Pantocid 40)',
     genericName: 'Pantoprazole Sodium Gastro-Resistant IP 40mg',
+    systemOfMedicine: 'Allopathic',
+    dosageForm: 'Enteric-Coated Tablet',
+    targetSpecies: 'Human',
     category: 'Proton Pump Inhibitor (PPI)',
     prescriptionStatus: 'Prescription Only (Schedule H)',
     shortSummary: 'Gastric acid pump inhibitor for acid reflux (GERD) and peptic ulcer protection.',
@@ -98,6 +110,9 @@ const VERIFIED_CLINICAL_CATALOG = [
     id: 'med-biotin-10mg',
     name: 'Biotin 10mg / 10,000 mcg (Biotin Forte / Hairbless)',
     genericName: 'Biotin USP / IP (Vitamin B7)',
+    systemOfMedicine: 'Allopathic / Nutraceutical',
+    dosageForm: 'Tablet',
+    targetSpecies: 'Human',
     category: 'Water-Soluble B-Complex Vitamin Supplement',
     prescriptionStatus: 'OTC Nutritional Supplement',
     shortSummary: 'Essential coenzyme for keratin synthesis, fatty acid metabolism, and nail/hair health.',
@@ -113,9 +128,33 @@ const VERIFIED_CLINICAL_CATALOG = [
     referenceSource: 'ICMR-NIN Dietary Guidelines for Indians / USP-NF'
   },
   {
+    id: 'med-ashwagandha',
+    name: 'Ashwagandha (Withania somnifera Standardized Extract)',
+    genericName: 'Withania somnifera Root Extract (Ayurvedic Formulation)',
+    systemOfMedicine: 'Ayurvedic / Herbal',
+    dosageForm: 'Capsule / Tablet / Churna',
+    targetSpecies: 'Human',
+    category: 'Ayurvedic Rasayana & Adaptogen',
+    prescriptionStatus: 'OTC Ayurvedic Supplement',
+    shortSummary: 'Traditional Ayurvedic adaptogenic herb used for stress resilience and general vitality.',
+    description: 'Contains bioactive withanolides that modulate hypothalamic-pituitary-adrenal (HPA) axis stress signaling and support neuromuscular recovery.',
+    basePriceINR: 180.00,
+    approxCostRangeINR: '₹150 – ₹240 (Bottle of 60 Capsules)',
+    packSize: 'Bottle of 60 Capsules',
+    uses: ['Supportive management of mild stress and fatigue', 'General physical stamina and sleep quality support in Ayurvedic practice'],
+    sideEffects: ['Mild drowsiness or stomach upset at high doses', 'May interact with thyroid, sedative, blood pressure, or blood-sugar medications'],
+    standardDosage: 'Adults: Typically 300mg–500mg standardized root extract once or twice daily after meals as directed by an Ayurvedic or medical practitioner. Pediatric & Pregnancy: Avoid unless specifically prescribed by a qualified physician.',
+    curableDiseases: ['Stress-related fatigue (supportive Ayurvedic care)'],
+    doctorAdvice: 'Contraindicated in pregnancy and autoimmune conditions unless supervised by a doctor. Monitor thyroid levels if taken alongside levothyroxine.',
+    referenceSource: 'Ayurvedic Pharmacopoeia of India (API) / Ministry of AYUSH'
+  },
+  {
     id: 'med-vitamin-c-500',
     name: 'Vitamin C 500mg Chewable (Limcee / Celin 500)',
     genericName: 'Ascorbic Acid IP 100mg + Sodium Ascorbate IP 450mg (Eq. to 500mg Vitamin C)',
+    systemOfMedicine: 'Allopathic',
+    dosageForm: 'Chewable Tablet',
+    targetSpecies: 'Human',
     category: 'Antioxidant & Water-Soluble Vitamin',
     prescriptionStatus: 'OTC Nutritional Supplement',
     shortSummary: 'Essential antioxidant vitamin for collagen biosynthesis, iron absorption, and immunity.',
@@ -134,6 +173,9 @@ const VERIFIED_CLINICAL_CATALOG = [
     id: 'med-cholecalciferol-60k',
     name: 'Vitamin D3 60,000 IU (Uprise-D3 60K / Calcirol)',
     genericName: 'Cholecalciferol IP 60,000 IU',
+    systemOfMedicine: 'Allopathic',
+    dosageForm: 'Softgel Capsule / Granules Sachet',
+    targetSpecies: 'Human',
     category: 'Fat-Soluble Vitamin & Bone Calcium Regulator',
     prescriptionStatus: 'Pharmacist / Physician Guided Supplement',
     shortSummary: 'High-strength Cholecalciferol for correcting clinical Vitamin D deficiency.',
@@ -152,6 +194,9 @@ const VERIFIED_CLINICAL_CATALOG = [
     id: 'med-amoxicillin-500',
     name: 'Amoxicillin 500mg (Mox 500 / Novamox 500)',
     genericName: 'Amoxicillin Trihydrate IP eq. to Amoxicillin 500mg',
+    systemOfMedicine: 'Allopathic',
+    dosageForm: 'Capsule',
+    targetSpecies: 'Human',
     category: 'Beta-Lactam Penicillin Antibiotic',
     prescriptionStatus: 'Prescription Only (Schedule H)',
     shortSummary: 'Broad-spectrum penicillin antibiotic for confirmed bacterial infections.',
@@ -167,27 +212,12 @@ const VERIFIED_CLINICAL_CATALOG = [
     referenceSource: 'ICMR Treatment Guidelines for Antimicrobial Use in Common Syndromes / IP'
   },
   {
-    id: 'med-ibuprofen-400',
-    name: 'Ibuprofen 400mg (Brufen 400)',
-    genericName: 'Ibuprofen IP 400mg',
-    category: 'Non-Steroidal Anti-Inflammatory Drug (NSAID)',
-    prescriptionStatus: 'Prescription / Pharmacist Supervised (Schedule H)',
-    shortSummary: 'Anti-inflammatory analgesic for inflammatory joint pain, dental pain, and dysmenorrhea.',
-    description: 'Non-selectively inhibits cyclooxygenase (COX-1 and COX-2) enzymes, reducing peripheral prostaglandin synthesis responsible for pain, swelling, and inflammation.',
-    basePriceINR: 22.00,
-    approxCostRangeINR: '₹18 – ₹28 (Strip of 15 Tablets)',
-    packSize: 'Strip of 15 Tablets',
-    uses: ['Inflammatory musculoskeletal pain and rheumatoid/osteoarthritis flares', 'Primary dysmenorrhea (menstrual cramps)', 'Acute dental inflammation and post-extraction pain'],
-    sideEffects: ['Gastric irritation, heartburn, or peptic ulceration', 'Fluid retention or elevated blood pressure', 'Contraindicated in suspected Dengue fever due to bleeding risk'],
-    standardDosage: 'Adults: 200mg–400mg every 6–8 hours immediately after food as advised by a physician (Max 1,200mg/day without direct supervision). Pediatric: Weight-based suspension under physician supervision only.',
-    curableDiseases: ['Symptomatic relief of Inflammatory Pain and Primary Dysmenorrhea'],
-    doctorAdvice: 'Always take with food or milk to protect the stomach lining. Strictly avoid Ibuprofen and other NSAIDs during unconfirmed fevers in dengue-endemic seasons, in pregnancy, or with kidney/ulcer disease.',
-    referenceSource: 'National List of Essential Medicines (NLEM India) / IP'
-  },
-  {
     id: 'med-metformin-500',
     name: 'Metformin SR 500mg (Glycomet-SR 500)',
     genericName: 'Metformin Hydrochloride Sustained-Release IP 500mg',
+    systemOfMedicine: 'Allopathic',
+    dosageForm: 'Sustained-Release Tablet',
+    targetSpecies: 'Human',
     category: 'Biguanide Oral Antidiabetic',
     prescriptionStatus: 'Prescription Only (Schedule H)',
     shortSummary: 'First-line prescription insulin sensitizer for Type 2 Diabetes Mellitus management.',
@@ -225,7 +255,6 @@ const PREFERRED_TEXT_MODELS = [
   'mixtral-8x7b-32768'
 ];
 
-// Excludes audio/TTS/STT, safety classifiers, reasoning-heavy models, and Arabic-default models
 const NON_TEXT_CHAT_MODEL_REGEX = /orpheus|canopylabs|tts|whisper|audio|speech|playai|guard|safeguard|embed|rerank|tool-use|distil-whisper|allam|saba|arabic/i;
 const UNWANTED_FOREIGN_SCRIPT_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u4E00-\u9FFF]/;
 
@@ -275,9 +304,6 @@ async function getCandidateTextModels(apiKey, baseUrl) {
         const others = validIds.filter(id => !prioritized.includes(id));
         cachedModelList = [...prioritized, ...others];
         cachedModelListTimestamp = now;
-      } else {
-        const errBody = await resp.json().catch(() => ({}));
-        console.error('[AI Models List Error]:', resp.status, errBody.error?.message || '');
       }
     } catch (err) {
       console.warn('[AI Model Discovery Warning]: Using static preferred model list:', err.message);
@@ -300,7 +326,6 @@ function extractAndRepairJson(rawText) {
     throw new Error('Empty AI response');
   }
 
-  // Strip <think>...</think> reasoning tags and markdown code fences
   let cleaned = rawText
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
     .replace(/```json/gi, '')
@@ -314,22 +339,19 @@ function extractAndRepairJson(rawText) {
 
   cleaned = cleaned.slice(firstBrace);
 
-  // 1. Direct parse attempt
   try {
     return JSON.parse(cleaned);
   } catch (_) {
-    // 2. Trim trailing characters after the last closing brace if extra text exists
     const lastBrace = cleaned.lastIndexOf('}');
     if (lastBrace > 0) {
       try {
         return JSON.parse(cleaned.slice(0, lastBrace + 1));
       } catch (__) {
-        // Proceed to truncation repair
+        // Continue to truncation auto-repair
       }
     }
   }
 
-  // 3. Repair JSON truncated due to max_tokens ceiling
   let repaired = cleaned.replace(/,\s*$/, '');
   let inString = false;
   let escapeNext = false;
@@ -360,9 +382,7 @@ function extractAndRepairJson(rawText) {
     }
   }
 
-  if (inString) {
-    repaired += '"';
-  }
+  if (inString) repaired += '"';
   repaired = repaired.replace(/,\s*$/, '');
   while (stack.length > 0) {
     repaired += stack.pop();
@@ -374,7 +394,7 @@ function extractAndRepairJson(rawText) {
 // ============================================================================
 // RESILIENT AI COMPLETION CLIENT (WITH JSON VALIDATION & MODEL FAILOVER)
 // ============================================================================
-async function callGroqAI({ messages, maxTokens = 500, temperature = 0.2, expectJson = false }) {
+async function callGroqAI({ messages, maxTokens = 900, temperature = 0.2, expectJson = false }) {
   const apiKey = getConfiguredApiKey();
   if (!apiKey || apiKey === 'DEMO' || apiKey.includes('paste_your')) {
     const err = new Error('GROK_API_KEY is missing or invalid in environment variables.');
@@ -404,7 +424,7 @@ async function callGroqAI({ messages, maxTokens = 500, temperature = 0.2, expect
             temperature,
             max_tokens: currentMaxTokens
           })
-        }, 15000);
+        }, 16000);
 
         const data = await response.json().catch(() => ({}));
 
@@ -427,7 +447,7 @@ async function callGroqAI({ messages, maxTokens = 500, temperature = 0.2, expect
               } catch (parseErr) {
                 console.warn(`[AI JSON Parse Failover]: Model "${model}" returned unparseable output (${parseErr.message}). Trying next model.`);
                 lastError = parseErr;
-                break; // Failover to next model
+                break;
               }
             }
 
@@ -437,20 +457,17 @@ async function callGroqAI({ messages, maxTokens = 500, temperature = 0.2, expect
 
         const errMsg = data.error?.message || `HTTP ${response.status}`;
 
-        // Authentication failure -> no point retrying other models with an invalid key
         if (response.status === 401) {
           const authErr = new Error('Invalid AI API key (401 Unauthorized). Check GROK_API_KEY in .env / Render.');
           authErr.code = 'INVALID_API_KEY';
           throw authErr;
         }
 
-        // Dynamic max_tokens cap adjustment
-        if (response.status === 400 && /max_tokens|context_window/i.test(errMsg) && currentMaxTokens > 450) {
-          currentMaxTokens = 450;
+        if (response.status === 400 && /max_tokens|context_window/i.test(errMsg) && currentMaxTokens > 500) {
+          currentMaxTokens = 500;
           continue;
         }
 
-        // Incompatible or deprecated model -> blacklist & failover
         if (
           response.status === 400 ||
           response.status === 403 ||
@@ -463,7 +480,6 @@ async function callGroqAI({ messages, maxTokens = 500, temperature = 0.2, expect
           break;
         }
 
-        // Rate limit (429) or transient upstream error (5xx)
         if (response.status === 429 || response.status >= 500) {
           lastError = new Error(errMsg);
           const delayMs = 700 * Math.pow(2, attempt);
@@ -493,13 +509,14 @@ function findInVerifiedCatalog(query) {
     item.name.toLowerCase().includes(q) ||
     item.genericName.toLowerCase().includes(q) ||
     item.category.toLowerCase().includes(q) ||
+    item.systemOfMedicine.toLowerCase().includes(q) ||
     item.shortSummary.toLowerCase().includes(q) ||
     item.uses.some(u => u.toLowerCase().includes(q))
   );
 }
 
 // ============================================================================
-// DIAGNOSTIC HEALTH CHECK ENDPOINTS
+// DIAGNOSTIC & CONFIG ENDPOINTS
 // ============================================================================
 app.get('/api/health', (req, res) => {
   const apiKey = getConfiguredApiKey();
@@ -528,9 +545,6 @@ app.get('/api/health/ai', async (req, res) => {
   }
 });
 
-// ============================================================================
-// FIREBASE AUTH CONFIG ENDPOINT
-// ============================================================================
 app.get('/api/auth-config', (req, res) => {
   res.json({
     apiKey: (process.env.FIREBASE_API_KEY || '').trim(),
@@ -605,7 +619,7 @@ app.post('/api/location', async (req, res) => {
 });
 
 // ============================================================================
-// DYNAMIC MEDICINE RECOMMENDATIONS ENDPOINT (ROTATING + AI ENRICHED + CACHED)
+// DYNAMIC MEDICINE RECOMMENDATIONS ENDPOINT
 // ============================================================================
 app.get('/api/recommendations', async (req, res) => {
   try {
@@ -669,18 +683,48 @@ Return ONLY a JSON object mapping each id to its note string, e.g. {"med-paracet
 });
 
 // ============================================================================
-// SEARCH ENGINE BACKEND (GROQ AI + JSON AUTO-REPAIR + CACHE + VERIFIED FALLBACK)
+// INTELLIGENT MULTI-INTENT, SPELLING-TOLERANT & MULTI-MATCH SEARCH ENGINE
 // ============================================================================
+function normalizeSearchItem(raw, fallbackTitle, modelName) {
+  const numericPrice = Number(raw.basePriceINR);
+  const hasRetailPrice = Number.isFinite(numericPrice) && numericPrice > 0;
+
+  return {
+    id: `ai-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    name: raw.name || fallbackTitle,
+    genericName: raw.genericName || 'Refer to clinical reference',
+    systemOfMedicine: raw.systemOfMedicine || 'Allopathic',
+    dosageForm: raw.dosageForm || 'Standard Formulation',
+    targetSpecies: raw.targetSpecies || 'Human',
+    category: raw.category || 'Healthcare Reference',
+    prescriptionStatus: raw.prescriptionStatus || 'Consult Physician / Pharmacist',
+    description: raw.description || 'Clinical information retrieved via live AI healthcare intelligence.',
+    hasRetailPrice,
+    basePriceINR: hasRetailPrice ? numericPrice : 0,
+    approxCostRangeINR: raw.approxCostRangeINR || (hasRetailPrice ? `Approx. ₹${numericPrice.toFixed(0)}` : 'N/A (Varies by provider/clinic)'),
+    packSize: raw.packSize || 'Standard Unit',
+    uses: Array.isArray(raw.uses) && raw.uses.length > 0 ? raw.uses : ['Consult a qualified healthcare professional for approved uses'],
+    sideEffects: Array.isArray(raw.sideEffects) && raw.sideEffects.length > 0 ? raw.sideEffects : ['Consult official package insert or clinician for adverse effects/precautions'],
+    standardDosage: raw.standardDosage || 'Dosage or protocol must be determined by a qualified medical practitioner based on age, species, and clinical condition.',
+    curableDiseases: Array.isArray(raw.curableDiseases) && raw.curableDiseases.length > 0 ? raw.curableDiseases : ['Approved clinical indications only'],
+    doctorAdvice: raw.doctorAdvice || 'Do not self-medicate. Consult a qualified doctor, pharmacist, or veterinarian before use.',
+    referenceSource: raw.referenceSource || `AI Clinical Intelligence (${modelName})`
+  };
+}
+
 app.get('/api/medicines', async (req, res) => {
   const query = (req.query.q || '').trim();
 
   if (!query) {
-    return res.status(400).json({ error: 'Please enter a medicine, supplement, or medical term to search.', medicines: [] });
+    return res.status(400).json({
+      error: 'Please enter a medicine name, symptom, health device, or question to search.',
+      medicines: []
+    });
   }
 
-  if (query.length < 2 || query.length > 100 || !/[a-zA-Z]/.test(query)) {
+  if (query.length > 140) {
     return res.status(400).json({
-      error: 'Please enter a valid medical or medicine name (2–100 characters, including letters).',
+      error: 'Search query is too long. Please keep it under 140 characters.',
       medicines: []
     });
   }
@@ -689,80 +733,96 @@ app.get('/api/medicines', async (req, res) => {
 
   const cached = searchCache.get(normalizedKey);
   if (cached && Date.now() - cached.timestamp < SEARCH_CACHE_TTL_MS) {
-    return res.json({ medicines: cached.data, source: 'cache' });
+    return res.json({ ...cached.payload, source: 'cache' });
   }
 
   try {
-    // Compact schema designed to fit cleanly within 500 tokens without truncation
-    const prompt = `Provide factual Indian clinical reference data in English for the medical query: "${query}" (can be a brand medicine, generic drug, supplement, or medical condition/symptom).
-If "${query}" is completely unrelated to medicine, health, or healthcare, return ONLY: {"valid":false}
-Otherwise return ONLY a compact raw JSON object (no markdown):
+    const prompt = `Analyze the user's search query: "${query}"
+
+You are an intelligent Indian healthcare & general search engine. Understand spelling mistakes, phonetic typos, incomplete medicine names, singular/plural forms, natural language questions, and regional brands.
+
+Classify the query into ONE of 4 intents:
+1. "medical_item": Any Allopathic medicine, tablet, capsule, syrup, injection, drops, Ayurvedic/herbal formulation (e.g., Liv.52, Ashwagandha), Homeopathic remedy (e.g., Arnica 30C), Veterinary medicine, medical device (e.g., oximeter), or diagnostic test (e.g., HbA1c, CBC).
+   - IMPORTANT: Never reject a potentially medical query due to misspellings or unfamiliar regional names.
+   - If the query is incomplete or matches multiple distinct medicines/brands (e.g., "pan", "azithro", "calpol", "paracetmol" syrup vs tablet), return 2 to 3 clearly distinguished objects in "items" so the user can compare them!
+2. "medical_condition": A disease, symptom, syndrome, or treatment topic (e.g., "migraine", "acidity", "dengue fever", "dry cough at night"). Return 1 structured clinical overview object in "items" (set basePriceINR to 0 and packSize to "Clinical Condition Overview").
+3. "general_knowledge": A clearly non-medical query (e.g., "capital of Japan", "what is photosynthesis", "Python list comprehension"). Set "items" to [] and provide a helpful, accurate answer in "generalAnswer".
+4. "ambiguous": An ultra-short or genuinely ambiguous term with completely different medical vs non-medical meanings (e.g., "iron", "mercury", "culture", "cold"). Provide 2 to 4 clickable clarification queries in "clarificationOptions".
+
+Output ONLY valid raw JSON (no markdown) matching this exact schema:
 {
-  "valid": true,
-  "name": "Medicine or Clinical Topic Name",
-  "genericName": "Active Composition / Clinical Category",
-  "category": "Pharmacological or Clinical Class",
-  "prescriptionStatus": "OTC / Supplement / Prescription Only (Schedule H)",
-  "description": "Concise 1-2 sentence mechanism or clinical overview",
-  "basePriceINR": 95,
-  "packSize": "Strip of 10 Tablets or Standard Unit",
-  "uses": ["Use 1", "Use 2", "Use 3"],
-  "sideEffects": ["Side effect 1", "Side effect 2"],
-  "standardDosage": "General reference distinguishing Adult vs Pediatric vs Prescription-Only rules (no self-medication)",
-  "curableDiseases": ["Indication 1", "Indication 2"],
-  "doctorAdvice": "Key precautions and advice to consult a qualified doctor"
+  "intent": "medical_item | medical_condition | general_knowledge | ambiguous",
+  "correctedQuery": "Normalized or spelling-corrected search term",
+  "spellingNote": "Empty string if exact match, OR brief note e.g. 'Showing matches for Azithromycin (auto-corrected from azithro)'",
+  "generalAnswer": {
+    "title": "Topic title (only if intent is general_knowledge)",
+    "summary": "Clear, accurate 2-4 sentence answer",
+    "keyPoints": ["Point 1", "Point 2"]
+  },
+  "clarificationOptions": ["Option 1 (e.g. Iron supplement tablets)", "Option 2 (e.g. Serum Iron blood test)"],
+  "items": [
+    {
+      "name": "Full Product / Topic Name",
+      "genericName": "Active Composition / Formulation / Test Type",
+      "systemOfMedicine": "Allopathic | Ayurvedic | Homeopathic | Veterinary | Diagnostic / Device | Clinical Condition",
+      "dosageForm": "Tablet | Capsule | Syrup | Injection | Drops | Powder | Device | Test | Condition",
+      "targetSpecies": "Human | Veterinary",
+      "category": "Pharmacological or Healthcare Class",
+      "prescriptionStatus": "OTC | Supplement | Ayurvedic / Homeopathic | Prescription Only (Schedule H) | Veterinary Rx | Informational",
+      "description": "Clear 1-2 sentence mechanism or clinical overview",
+      "basePriceINR": 95,
+      "approxCostRangeINR": "₹80 – ₹110 (or 'Varies by lab/clinic' for tests/conditions)",
+      "packSize": "Strip of 10 Tablets / Bottle / Test",
+      "uses": ["Primary use 1", "Primary use 2", "Primary use 3"],
+      "sideEffects": ["Side effect or precaution 1", "Side effect or precaution 2"],
+      "standardDosage": "General authoritative reference distinguishing Adult vs Pediatric vs Veterinary vs Prescription-Only rules (never prescribe self-medication)",
+      "curableDiseases": ["Approved indication 1", "Approved indication 2"],
+      "doctorAdvice": "Key precautions and advice to consult a qualified doctor, pharmacist, or veterinarian"
+    }
+  ]
 }`;
 
     const { json: parsed, model } = await callGroqAI({
       messages: [
         {
           role: 'system',
-          content: 'You are a clinical pharmacology JSON API grounded in Indian Pharmacopoeia (IP) and CDSCO standards. Output concise, valid English JSON only.'
+          content: 'You are an intelligent, spelling-tolerant Indian medical and general search API grounded in Indian Pharmacopoeia (IP), AYUSH, CDSCO, and WHO reference standards. Never invent retail drug prices; if not a packaged drug, set basePriceINR to 0. Output valid JSON only.'
         },
         { role: 'user', content: prompt }
       ],
-      maxTokens: 480,
-      temperature: 0.1,
+      maxTokens: 950,
+      temperature: 0.15,
       expectJson: true
     });
 
-    if (parsed.valid === false || parsed.isMedicine === false) {
-      return res.json({
-        medicines: [],
-        message: `"${query}" was not recognized as a valid medicine, supplement, or medical term.`
-      });
-    }
+    const intent = ['medical_item', 'medical_condition', 'general_knowledge', 'ambiguous'].includes(parsed.intent)
+      ? parsed.intent
+      : (Array.isArray(parsed.items) && parsed.items.length > 0 ? 'medical_item' : 'general_knowledge');
 
-    const basePrice = Number(parsed.basePriceINR) > 0 ? Number(parsed.basePriceINR) : 95.00;
+    const rawItems = Array.isArray(parsed.items) ? parsed.items.slice(0, 4) : [];
+    const medicines = rawItems.map(item => normalizeSearchItem(item, parsed.correctedQuery || query, model));
 
-    const sanitizedMed = {
-      id: `ai-${Date.now()}`,
-      name: parsed.name || query,
-      genericName: parsed.genericName || 'Refer to official clinical pack insert',
-      category: parsed.category || 'Clinical Preparation',
-      prescriptionStatus: parsed.prescriptionStatus || 'Consult Physician / Pharmacist',
-      shortSummary: parsed.description || '',
-      description: parsed.description || 'Clinical information retrieved via live AI pharmacology reference.',
-      basePriceINR: basePrice,
-      approxCostRangeINR: `Approx. ₹${basePrice.toFixed(0)} (${parsed.packSize || 'Standard Pack'})`,
-      packSize: parsed.packSize || 'Standard Pack',
-      uses: Array.isArray(parsed.uses) && parsed.uses.length > 0 ? parsed.uses : ['Consult a qualified physician for approved clinical indications'],
-      sideEffects: Array.isArray(parsed.sideEffects) && parsed.sideEffects.length > 0 ? parsed.sideEffects : ['Consult official package insert or pharmacist for adverse effects'],
-      standardDosage: parsed.standardDosage || 'Dosage must be determined by a qualified medical practitioner based on age and clinical condition.',
-      curableDiseases: Array.isArray(parsed.curableDiseases) && parsed.curableDiseases.length > 0 ? parsed.curableDiseases : ['Approved clinical indications only'],
-      doctorAdvice: parsed.doctorAdvice || 'Do not self-medicate. Consult a registered medical practitioner before taking any medication.',
-      referenceSource: `Live AI Clinical Reference (${model})`
+    const payload = {
+      intent,
+      correctedQuery: parsed.correctedQuery || query,
+      spellingNote: typeof parsed.spellingNote === 'string' ? parsed.spellingNote.trim() : '',
+      generalAnswer: parsed.generalAnswer || null,
+      clarificationOptions: Array.isArray(parsed.clarificationOptions) ? parsed.clarificationOptions.slice(0, 4) : [],
+      medicines
     };
 
-    searchCache.set(normalizedKey, { timestamp: Date.now(), data: [sanitizedMed] });
-    return res.json({ medicines: [sanitizedMed], source: 'ai' });
+    searchCache.set(normalizedKey, { timestamp: Date.now(), payload });
+    return res.json({ ...payload, source: 'ai' });
   } catch (err) {
     console.error('[Search Engine AI Error]:', err.message);
 
     const fallbackMatches = findInVerifiedCatalog(query);
     if (fallbackMatches.length > 0) {
       return res.json({
-        medicines: fallbackMatches,
+        intent: 'medical_item',
+        correctedQuery: query,
+        spellingNote: '',
+        medicines: fallbackMatches.map(m => ({ ...m, hasRetailPrice: true })),
         source: 'verified-catalog-fallback',
         notice: 'Showing verified Indian Pharmacopoeia reference data while live AI search is busy.'
       });
@@ -791,8 +851,8 @@ You are MediBot, a polite, knowledgeable medical information assistant for MediP
    - If the user writes in Hinglish (Hindi written in the Latin/English alphabet), respond naturally in Hinglish using the English/Roman alphabet.
    - NEVER respond in Arabic, Chinese, Russian, or any non-English foreign script.
 2. Answer everyday greetings and general questions naturally and concisely.
-3. For medicine or health queries, use clear headings, bullet points, and bold labels for Common Uses, Approximate INR Cost, Possible Side Effects, and General Reference Dosage (clearly separating Adult, Pediatric, and Prescription-Only rules).
-4. Never diagnose conditions, never provide personalized dosage prescriptions, and never encourage unsupervised use of prescription medicines. Always remind the user to consult a qualified doctor or pharmacist.
+3. For medicine or health queries, use clear headings, bullet points, and bold labels for Common Uses, Approximate INR Cost, Possible Side Effects, and General Reference Dosage (clearly separating Adult, Pediatric, Veterinary, and Prescription-Only rules).
+4. Never diagnose conditions, never provide personalized dosage prescriptions, and never encourage unsupervised use of prescription medicines. Always remind the user to consult a qualified doctor, pharmacist, or veterinarian.
 `.trim();
 
 app.post('/api/chat', async (req, res) => {
