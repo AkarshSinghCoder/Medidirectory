@@ -5,8 +5,6 @@ import {
   browserLocalPersistence,
   GoogleAuthProvider,
   signInWithPopup,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
   onAuthStateChanged,
   signOut
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
@@ -22,28 +20,12 @@ let currentLocalityData = {
 let lastSearchPayload = null;
 let lastSearchQuery = '';
 let chatHistory = [];
-
-// Firebase & Singleton reCAPTCHA State
 let firebaseAuth = null;
-let recaptchaWidgetId = null;
-let confirmationResult = null;
-let lastFormattedPhone = '';
-let isSendingOtp = false;
-let isVerifyingOtp = false;
-let resendCooldownTimer = null;
 
 // DOM Elements
 const authModal = document.getElementById('auth-modal');
 const authStatusMsg = document.getElementById('auth-status-msg');
 const googleLoginBtn = document.getElementById('google-login-btn');
-const phoneAuthForm = document.getElementById('phone-auth-form');
-const phoneInput = document.getElementById('phone-input');
-const sendOtpBtn = document.getElementById('send-otp-btn');
-const otpVerifyForm = document.getElementById('otp-verify-form');
-const otpInput = document.getElementById('otp-input');
-const verifyOtpBtn = document.getElementById('verify-otp-btn');
-const resendOtpBtn = document.getElementById('resend-otp-btn');
-const changePhoneBtn = document.getElementById('change-phone-btn');
 const localityLabel = document.getElementById('locality-label');
 const userChip = document.getElementById('user-chip');
 const userIdentifier = document.getElementById('user-Identifier');
@@ -79,112 +61,29 @@ function setAuthMessage(text, isError = false) {
 }
 
 // ============================================================================
-// FIREBASE AUTHENTICATION (SINGLETON RECAPTCHA + E.164 + SESSION PERSISTENCE)
+// FIREBASE AUTHENTICATION (GOOGLE SIGN-IN ONLY + SESSION PERSISTENCE)
 // ============================================================================
-async function ensureRecaptchaReady() {
-  if (!firebaseAuth) return null;
-
-  // Initialize RecaptchaVerifier strictly ONCE
-  if (!window.recaptchaVerifier) {
-    window.recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, 'recaptcha-container', {
-      size: 'invisible',
-      'expired-callback': () => {
-        resetRecaptchaWidget();
-        setAuthMessage('Security verification expired. Please click Send OTP again.', true);
-      }
-    });
-    recaptchaWidgetId = await window.recaptchaVerifier.render();
-  }
-  return window.recaptchaVerifier;
-}
-
-function resetRecaptchaWidget() {
-  try {
-    if (typeof window.grecaptcha !== 'undefined' && recaptchaWidgetId !== null) {
-      window.grecaptcha.reset(recaptchaWidgetId);
-    }
-  } catch (err) {
-    console.warn('reCAPTCHA widget reset notice:', err.message);
-  }
-}
-
-function disposeRecaptcha() {
-  try {
-    if (window.recaptchaVerifier) {
-      window.recaptchaVerifier.clear();
-      window.recaptchaVerifier = null;
-      recaptchaWidgetId = null;
-    }
-    const container = document.getElementById('recaptcha-container');
-    if (container) container.innerHTML = '';
-  } catch (_) {
-    window.recaptchaVerifier = null;
-    recaptchaWidgetId = null;
-  }
-}
-
-function validateAndFormatE164(rawInput) {
-  const cleaned = rawInput.replace(/[\s\-()]/g, '');
-
-  // Strict 10-digit check for Indian (+91) numbers
-  if (cleaned.startsWith('+91')) {
-    const localDigits = cleaned.slice(3).replace(/\D/g, '');
-    if (localDigits.length !== 10 || !/^[6-9]\d{9}$/.test(localDigits)) {
-      return {
-        valid: false,
-        error: `Indian (+91) mobile numbers must be 10 digits starting with 6–9 (entered ${localDigits.length} digits).`
-      };
-    }
-    return { valid: true, formatted: `+91${localDigits}` };
-  }
-
-  // General international E.164 numbers (+[country code][subscriber number], 8 to 15 digits total)
-  if (/^\+[1-9]\d{7,14}$/.test(cleaned)) {
-    return { valid: true, formatted: cleaned };
-  }
-
-  // 10-digit local Indian number typed without +91 prefix
-  const digitsOnly = cleaned.replace(/\D/g, '');
-  if (digitsOnly.length === 10 && /^[6-9]\d{9}$/.test(digitsOnly)) {
-    return { valid: true, formatted: `+91${digitsOnly}` };
-  }
-  if (digitsOnly.length === 12 && digitsOnly.startsWith('91') && /^[6-9]\d{9}$/.test(digitsOnly.slice(2))) {
-    return { valid: true, formatted: `+${digitsOnly}` };
-  }
-
-  return {
-    valid: false,
-    error: 'Enter a valid phone number in international E.164 format (e.g., +91 98765 43210 or +1 415 555 2671).'
-  };
-}
-
 function mapFirebaseError(error) {
   const code = error?.code || '';
-  if (code === 'auth/billing-not-enabled') {
-    return 'Firebase Console Billing Requirement: Real carrier SMS requires upgrading your Firebase project to the Blaze (Pay-as-you-go) billing plan (first 10 SMS/day are free), or registering a test number under Authentication → Sign-in method → Phone → Phone numbers for testing.';
+  if (code === 'auth/popup-closed-by-user') {
+    return 'Google Sign-In popup was closed before completing login. Click "Continue with Google" to try again.';
+  }
+  if (code === 'auth/popup-blocked') {
+    return 'Popup was blocked by your browser. Please allow popups for this site and click "Continue with Google" again.';
+  }
+  if (code === 'auth/cancelled-popup-request') {
+    return 'Sign-in request was cancelled. Please try again.';
   }
   if (code === 'auth/operation-not-allowed') {
-    return 'Firebase Console Setting Required: Enable Phone Sign-In under Authentication → Sign-in method and allow your country code (e.g., +91 India) under Authentication → Settings → SMS region policy.';
-  }
-  if (code === 'auth/invalid-phone-number') {
-    return 'Invalid phone number format. Include your country code (e.g., +91 98765 43210).';
-  }
-  if (code === 'auth/invalid-verification-code') {
-    return 'Incorrect 6-digit OTP code. Please check the SMS and try again.';
-  }
-  if (code === 'auth/code-expired') {
-    return 'This OTP code has expired. Click "Resend OTP" to request a fresh code.';
-  }
-  if (code === 'auth/too-many-requests' || code === 'auth/quota-exceeded') {
-    return 'Too many OTP requests for this number or project. Please wait a few minutes before retrying.';
+    return 'Google Sign-In is not enabled in Firebase Console → Authentication → Sign-in method.';
   }
   if (code === 'auth/unauthorized-domain') {
     return 'This domain is not authorized in Firebase Console → Authentication → Settings → Authorized domains.';
   }
   if (code === 'auth/network-request-failed') {
-    return 'Network connection error while contacting Firebase. Check your internet connection and retry.';
+    return 'Network connection error while contacting Google Sign-In. Check your internet connection and retry.';
   }
-  return error?.message || 'Authentication failed. Please try again.';
+  return error?.message || 'Google authentication failed. Please try again.';
 }
 
 async function initFirebase() {
@@ -200,7 +99,7 @@ async function initFirebase() {
 
       onAuthStateChanged(firebaseAuth, (user) => {
         if (user) {
-          completeUserOnboarding(user.displayName || user.phoneNumber || user.email);
+          completeUserOnboarding(user.displayName || user.email);
         } else {
           authModal.classList.remove('hidden');
           userChip.classList.add('hidden');
@@ -222,7 +121,9 @@ googleLoginBtn.addEventListener('click', async () => {
   try {
     googleLoginBtn.disabled = true;
     setAuthMessage('Opening Google Sign-In...');
-    const result = await signInWithPopup(firebaseAuth, new GoogleAuthProvider());
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const result = await signInWithPopup(firebaseAuth, provider);
     completeUserOnboarding(result.user.displayName || result.user.email);
   } catch (error) {
     setAuthMessage(mapFirebaseError(error), true);
@@ -231,112 +132,10 @@ googleLoginBtn.addEventListener('click', async () => {
   }
 });
 
-async function triggerPhoneOtp(e164Phone) {
-  if (!firebaseAuth || isSendingOtp) return;
-
-  try {
-    isSendingOtp = true;
-    sendOtpBtn.disabled = true;
-    resendOtpBtn.disabled = true;
-    setAuthMessage(`Verifying security check & sending SMS OTP to ${e164Phone}...`);
-
-    const verifier = await ensureRecaptchaReady();
-    confirmationResult = await signInWithPhoneNumber(firebaseAuth, e164Phone, verifier);
-
-    lastFormattedPhone = e164Phone;
-    otpVerifyForm.classList.remove('hidden');
-    otpInput.value = '';
-    otpInput.focus();
-    startResendCooldown(30);
-    setAuthMessage(`Real SMS OTP sent to ${e164Phone}. Enter the 6-digit code below.`);
-  } catch (error) {
-    resetRecaptchaWidget();
-    setAuthMessage(mapFirebaseError(error), true);
-  } finally {
-    isSendingOtp = false;
-    sendOtpBtn.disabled = false;
-  }
-}
-
-function startResendCooldown(seconds) {
-  if (resendCooldownTimer) clearInterval(resendCooldownTimer);
-  let remaining = seconds;
-  resendOtpBtn.disabled = true;
-  resendOtpBtn.textContent = `Resend OTP (${remaining}s)`;
-  resendCooldownTimer = setInterval(() => {
-    remaining -= 1;
-    if (remaining <= 0) {
-      clearInterval(resendCooldownTimer);
-      resendOtpBtn.disabled = false;
-      resendOtpBtn.textContent = 'Resend OTP';
-    } else {
-      resendOtpBtn.textContent = `Resend OTP (${remaining}s)`;
-    }
-  }, 1000);
-}
-
-phoneAuthForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const check = validateAndFormatE164(phoneInput.value.trim());
-  if (!check.valid) {
-    setAuthMessage(check.error, true);
-    return;
-  }
-  phoneInput.value = check.formatted;
-  await triggerPhoneOtp(check.formatted);
-});
-
-resendOtpBtn.addEventListener('click', async () => {
-  if (!lastFormattedPhone || isSendingOtp) return;
-  resetRecaptchaWidget();
-  await triggerPhoneOtp(lastFormattedPhone);
-});
-
-changePhoneBtn.addEventListener('click', () => {
-  if (resendCooldownTimer) clearInterval(resendCooldownTimer);
-  otpVerifyForm.classList.add('hidden');
-  confirmationResult = null;
-  phoneInput.focus();
-  setAuthMessage('Enter your phone number with country code (e.g., +91 98765 43210).');
-});
-
-otpVerifyForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  if (isVerifyingOtp) return;
-
-  const code = otpInput.value.trim();
-  if (!/^\d{6}$/.test(code)) {
-    setAuthMessage('Please enter a valid 6-digit numeric OTP code.', true);
-    return;
-  }
-  if (!confirmationResult) {
-    setAuthMessage('Please request an SMS OTP first.', true);
-    return;
-  }
-
-  try {
-    isVerifyingOtp = true;
-    verifyOtpBtn.disabled = true;
-    setAuthMessage('Verifying OTP...');
-    const result = await confirmationResult.confirm(code);
-    confirmationResult = null;
-    completeUserOnboarding(result.user.phoneNumber);
-  } catch (error) {
-    setAuthMessage(mapFirebaseError(error), true);
-  } finally {
-    isVerifyingOtp = false;
-    verifyOtpBtn.disabled = false;
-  }
-});
-
 logoutBtn.addEventListener('click', async () => {
-  if (resendCooldownTimer) clearInterval(resendCooldownTimer);
-  disposeRecaptcha();
-  confirmationResult = null;
   if (firebaseAuth) await signOut(firebaseAuth);
   authModal.classList.remove('hidden');
   userChip.classList.add('hidden');
-  otpVerifyForm.classList.add('hidden');
   setAuthMessage('');
 });
 
@@ -344,6 +143,7 @@ function completeUserOnboarding(identifier) {
   authModal.classList.add('hidden');
   userIdentifier.textContent = identifier;
   userChip.classList.remove('hidden');
+  setAuthMessage('');
   requestRealGeolocation();
 }
 
